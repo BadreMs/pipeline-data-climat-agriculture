@@ -1,0 +1,41 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+.dbt/
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+uv.lock.bak
+
+# Airflow
+airflow/logs/
+airflow/*.db
+airflow/airflow.cfg
+airflow/webserver_config.py
+logs/
+
+# dbt
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+
+# Data
+data/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
