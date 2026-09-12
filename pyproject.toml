@@ -19,6 +19,7 @@ dependencies = [
     "streamlit>=1.37",
     "pydeck>=0.9",
     "plotly>=5.22",
+    "pydantic-settings>=2.15.0",
 ]
 
 [dependency-groups]
