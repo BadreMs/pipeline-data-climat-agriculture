@@ -29,6 +29,7 @@ x-airflow-common: &airflow-common
     DATAGOVMA_USE_MOCK_FALLBACK: ${DATAGOVMA_USE_MOCK_FALLBACK:-true}
   volumes:
     - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/scripts:/opt/airflow/scripts
     - ./ingestion:/opt/airflow/project/ingestion
     - ./dbt_project:/opt/airflow/dbt_project
     - airflow_logs:/opt/airflow/logs
