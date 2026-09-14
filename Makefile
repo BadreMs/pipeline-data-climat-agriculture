@@ -1,4 +1,4 @@
-.PHONY: up down logs init-db ingest ingest-dry ingest-quick dbt-run dbt-test test lint format streamlit sync
+.PHONY: up down logs init-db ingest ingest-dry ingest-quick dags-check dbt-run dbt-test test lint format streamlit sync
 
 # Demarre Postgres + Airflow (webserver/scheduler)
 up:
@@ -28,6 +28,10 @@ ingest-dry:
 # Iteration rapide en dev : 1 region, 1 mois, pour ne pas attendre un run complet
 ingest-quick:
 	uv run python -m ingestion.run --start 2024-01-01 --end 2024-01-31 --regions MA-04
+
+# Verifie que les 3 DAGs s'importent sans erreur (necessite `make up` prealable)
+dags-check:
+	docker compose exec airflow-scheduler airflow dags list-import-errors
 
 dbt-run:
 	uv run dbt run --project-dir dbt_project --profiles-dir dbt_project

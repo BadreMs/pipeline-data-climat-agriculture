@@ -89,6 +89,35 @@ make ingest-dry     # smoke test, sans ecriture DB
 make ingest-quick   # 1 region (MA-04), janvier 2024 - iteration rapide en dev
 ```
 
+## Orchestration Airflow
+
+### Backfill initial (manuel, une seule fois)
+
+Le backfill historique complet ne passe **pas** par `airflow dags backfill` : `OpenMeteoClient` découpe déjà la période en chunks de 2 ans côté client, donc une seule commande couvre 2015 → aujourd'hui en quelques dizaines de requêtes. Rejouer ça via `airflow dags backfill` exécuterait le DAG quotidien une fois par jour depuis 2015 (~4000 runs) pour un gain nul.
+
+```bash
+make ingest   # backfill complet, 12 regions, periode par defaut (.env)
+```
+
+### DAGs
+
+| DAG | Schedule | Rôle |
+|---|---|---|
+| `dag_ingest_openmeteo` | `0 3 * * *` (quotidien, 03h00 Africa/Casablanca) | Fenêtre glissante de 5 jours (couvre le délai de consolidation de l'archive Open-Meteo) — 1 seule tâche pour les 12 régions |
+| `dag_ingest_agriculture` | `0 4 1 * *` (mensuel, le 1er) | `--skip-weather`, pas de plage de dates |
+| `dag_transform_dbt` | `None` (déclenchement manuel) | Squelette Phase 3 — `dbt run` → `dbt test`, sera activé une fois `dbt_project/` peuplé |
+
+Tous les DAGs : `catchup=False`, `max_active_runs=1`, `retries=2` (délai 5 min). Les tâches d'ingestion appellent `airflow/scripts/run_ingestion.sh` (pas `python -m ingestion.run` directement) : ce wrapper traduit l'exit code **1** (succès partiel — chunks météo en échec, ou agriculture en `mock-fallback-network-error`) en **0**, pour éviter des retries Airflow sur un résultat qui n'est pas un échec. L'exit code **2** (erreur fatale) reste propagé et déclenche bien les retries.
+
+### Vérifier que les DAGs sont valides
+
+```bash
+make up          # demarre Postgres + Airflow
+make dags-check  # equivalent a: docker compose exec airflow-scheduler airflow dags list-import-errors
+```
+
+Aucune dépendance `apache-airflow` n'est installée localement (hors conteneur) : Airflow n'est pas officiellement supporté nativement sur Windows, et les DAGs restent volontairement fins (juste des `BashOperator`) — toute la logique testée (128+ tests) vit dans `ingestion/`. La validation des DAGs se fait via la commande ci-dessus, pas via `make test`.
+
 ## Structure du projet
 
 ```
@@ -107,7 +136,7 @@ pipeline-data-climat-agriculture/
 
 - [x] Phase 0 — Setup (repo, Docker Compose, tooling qualité)
 - [x] Phase 1 — Ingestion locale (Open-Meteo, data.gov.ma)
-- [ ] Phase 2 — Orchestration Airflow
+- [x] Phase 2 — Orchestration Airflow
 - [ ] Phase 3 — Transformations dbt
 - [ ] Phase 4 — Restitution Streamlit
 - [ ] Phase 5 — Extension Azure (code + docs)
