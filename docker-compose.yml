@@ -11,11 +11,15 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
     DBT_PROFILES_DIR: /opt/airflow/dbt_project
-    PIPELINE_POSTGRES_HOST: postgres
-    PIPELINE_POSTGRES_PORT: 5432
-    PIPELINE_POSTGRES_USER: ${POSTGRES_USER}
-    PIPELINE_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    PIPELINE_POSTGRES_DWH_DB: ${POSTGRES_DWH_DB}
+    # Noms alignes sur ingestion/config.py::Settings (pas de prefixe) : ces
+    # variables sont lues directement par Settings() dans le conteneur Airflow.
+    # POSTGRES_HOST/PORT sont les valeurs internes au reseau Docker (service
+    # "postgres", port 5432) - independantes du port host (5433) de .env.
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: 5432
+    POSTGRES_USER: ${POSTGRES_USER}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    POSTGRES_DWH_DB: ${POSTGRES_DWH_DB}
     OPENMETEO_BASE_URL: ${OPENMETEO_BASE_URL}
     OPENMETEO_START_DATE: ${OPENMETEO_START_DATE}
     OPENMETEO_END_DATE: ${OPENMETEO_END_DATE}
