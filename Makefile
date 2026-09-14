@@ -1,4 +1,4 @@
-.PHONY: up down logs init-db ingest dbt-run dbt-test test lint format streamlit sync
+.PHONY: up down logs init-db ingest ingest-dry ingest-quick dbt-run dbt-test test lint format streamlit sync
 
 # Demarre Postgres + Airflow (webserver/scheduler)
 up:
@@ -16,8 +16,18 @@ init-db:
 	docker compose exec -T postgres psql -U $${POSTGRES_USER} -d $${POSTGRES_DWH_DB} -f /docker-entrypoint-initdb.d/01_schemas.sql
 
 # Lance l'ingestion locale (hors Airflow), cf. ingestion/run.py (Phase 1)
+# Periode par defaut = OPENMETEO_START_DATE/OPENMETEO_END_DATE (.env), 12 regions
 ingest:
 	uv run python -m ingestion.run
+
+# Smoke test : 1 region (MA-04 par defaut), 7 jours, vrai appel Open-Meteo,
+# AUCUNE ecriture DB. --start est ignore en --dry-run mais reste accepte.
+ingest-dry:
+	uv run python -m ingestion.run --dry-run
+
+# Iteration rapide en dev : 1 region, 1 mois, pour ne pas attendre un run complet
+ingest-quick:
+	uv run python -m ingestion.run --start 2024-01-01 --end 2024-01-31 --regions MA-04
 
 dbt-run:
 	uv run dbt run --project-dir dbt_project --profiles-dir dbt_project

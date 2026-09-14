@@ -44,7 +44,7 @@ VALID_CSV = (
 def test_no_url_configured_uses_mock() -> None:
     settings = Settings(datagovma_agriculture_url=None)
     df, source = load_agriculture_regional(settings)
-    assert source == "mock-fallback"
+    assert source == "mock-not-configured"
     assert not df.empty
 
 
@@ -65,7 +65,7 @@ def test_remote_download_network_error_falls_back_to_mock(respx_mock: Any) -> No
 
     df, source = load_agriculture_regional(settings)
 
-    assert source == "mock-fallback"
+    assert source == "mock-fallback-network-error"
     assert not df.empty
 
 
@@ -75,7 +75,7 @@ def test_remote_404_falls_back_to_mock(respx_mock: Any) -> None:
 
     df, source = load_agriculture_regional(settings)
 
-    assert source == "mock-fallback"
+    assert source == "mock-fallback-network-error"
 
 
 def test_remote_missing_columns_raises_value_error(respx_mock: Any) -> None:

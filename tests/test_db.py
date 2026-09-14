@@ -62,6 +62,38 @@ def test_upsert_weather_daily_injects_audit_columns() -> None:
     assert BATCH_ID in compiled_params.values()
 
 
+def test_upsert_weather_daily_accepts_source_url_column() -> None:
+    conn = MagicMock()
+    df = pd.DataFrame(
+        [
+            {
+                "region_code": "MA-04",
+                "date": "2024-01-01",
+                "temperature_2m_max": 20.5,
+                "source_url": "https://api.test/archive?start_date=2024-01-01",
+            },
+            {
+                "region_code": "MA-04",
+                "date": "2024-01-02",
+                "temperature_2m_max": 21.0,
+                "source_url": "https://api.test/archive?start_date=2024-01-02",
+            },
+        ]
+    )
+
+    upsert_weather_daily(conn, df, batch_id=BATCH_ID, source_url="https://ignored-fallback")
+
+    stmt = conn.execute.call_args.args[0]
+    compiled = stmt.compile(dialect=postgresql.dialect())  # type: ignore[no-untyped-call]
+    all_params = compiled.params
+    per_row_urls = {v for k, v in all_params.items() if "source_url" in k}
+    assert per_row_urls == {
+        "https://api.test/archive?start_date=2024-01-01",
+        "https://api.test/archive?start_date=2024-01-02",
+    }
+    assert "https://ignored-fallback" not in all_params.values()
+
+
 def test_upsert_weather_daily_empty_dataframe_is_noop() -> None:
     conn = MagicMock()
     result = upsert_weather_daily(conn, pd.DataFrame(), batch_id=BATCH_ID)

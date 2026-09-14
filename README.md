@@ -54,6 +54,41 @@ make streamlit
 Airflow UI : http://localhost:8080 (admin/admin par défaut, cf. `.env.example`).
 Adminer (optionnel, inspection Postgres) : `docker compose --profile tools up -d adminer` puis http://localhost:8081.
 
+## Ingestion locale
+
+### CLI
+
+```
+uv run python -m ingestion.run [--start YYYY-MM-DD] [--end YYYY-MM-DD]
+                                [--regions MA-01,MA-04] [--skip-weather]
+                                [--skip-agriculture] [--dry-run] [--verbose]
+```
+
+- `--start` (optionnel) : défaut = `OPENMETEO_START_DATE` (`.env`) si omis (un `WARNING` est loggué dans ce cas).
+- `--end` (optionnel) : défaut = `OPENMETEO_END_DATE` (`.env`) ou aujourd'hui.
+- `--regions` (optionnel) : codes ISO séparés par virgule (`MA-01`..`MA-12`). Défaut = les 12 (ou `MA-04` seul en `--dry-run`).
+- `--skip-weather` / `--skip-agriculture` : désactive l'une des deux sources.
+- `--dry-run` : smoke test — 1 région (MA-04 par défaut), 7 jours (indépendamment de `--start`/`--end`), vrai appel Open-Meteo, **aucune écriture en base**, sortie JSON sur stdout.
+- `--verbose` : logs `DEBUG`.
+
+### Exit codes
+
+- `0` : succès complet (y compris si l'agriculture est en mode `mock-not-configured` — c'est l'état par défaut du projet tant qu'aucune URL data.gov.ma compatible n'a été trouvée, pas une panne).
+- `1` : succès partiel/dégradé — au moins un chunk météo en échec définitif, **ou** l'agriculture est tombée en `mock-fallback-network-error` (une URL était configurée mais inaccessible).
+- `2` : erreur fatale — code région inconnu, dates incohérentes (`--end` < `--start`), CSV agriculture distant accessible mais dont le schéma a changé (colonnes manquantes), base inaccessible.
+
+### Idempotence
+
+Chaque run génère un `batch_id` (uuid4) unique, partagé entre l'upsert météo et agriculture. Un re-run sur la même période écrase proprement les lignes existantes (`ON CONFLICT DO UPDATE`, cf. `sql/init/02_raw_tables.sql`). Chaque ligne météo garde par ailleurs l'URL exacte de la requête Open-Meteo qui l'a produite (`_source_url`), pas une URL générique.
+
+### Exemples
+
+```bash
+make ingest        # 12 regions, periode par defaut (.env)
+make ingest-dry     # smoke test, sans ecriture DB
+make ingest-quick   # 1 region (MA-04), janvier 2024 - iteration rapide en dev
+```
+
 ## Structure du projet
 
 ```
@@ -71,7 +106,7 @@ pipeline-data-climat-agriculture/
 ## Roadmap
 
 - [x] Phase 0 — Setup (repo, Docker Compose, tooling qualité)
-- [ ] Phase 1 — Ingestion locale (Open-Meteo, data.gov.ma)
+- [x] Phase 1 — Ingestion locale (Open-Meteo, data.gov.ma)
 - [ ] Phase 2 — Orchestration Airflow
 - [ ] Phase 3 — Transformations dbt
 - [ ] Phase 4 — Restitution Streamlit

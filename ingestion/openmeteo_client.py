@@ -49,6 +49,7 @@ class WeatherDailyRecord:
     shortwave_radiation_sum: float | None
     relative_humidity_2m_mean: float | None
     wind_speed_10m_max: float | None
+    source_url: str
 
     def to_row(self) -> dict[str, RowValue]:
         """Represente l'enregistrement en dict plat (cle = colonne raw.weather_daily)."""
@@ -63,6 +64,7 @@ class WeatherDailyRecord:
             "shortwave_radiation_sum": self.shortwave_radiation_sum,
             "relative_humidity_2m_mean": self.relative_humidity_2m_mean,
             "wind_speed_10m_max": self.wind_speed_10m_max,
+            "source_url": self.source_url,
         }
 
 
@@ -112,12 +114,16 @@ def _to_optional_float(value: float | int | None) -> float | None:
     return None if value is None else float(value)
 
 
-def _parse_daily_payload(region_code: str, payload: dict[str, Any]) -> list[WeatherDailyRecord]:
+def _parse_daily_payload(
+    region_code: str, source_url: str, payload: dict[str, Any]
+) -> list[WeatherDailyRecord]:
     """Parse le payload JSON Open-Meteo (cle 'daily') en WeatherDailyRecord.
 
     Ignore volontairement latitude/longitude/elevation de la reponse (l'API renvoie
     les coordonnees de sa maille modele la plus proche, pas celles demandees) ;
-    seul region_code, fourni par l'appelant, est propage.
+    seul region_code, fourni par l'appelant, est propage. `source_url` est l'URL
+    exacte (avec query string) de la requete ayant produit ce payload : propagee
+    telle quelle sur chaque WeatherDailyRecord du chunk pour tracabilite exacte.
     """
     daily = payload["daily"]
     return [
@@ -136,6 +142,7 @@ def _parse_daily_payload(region_code: str, payload: dict[str, Any]) -> list[Weat
                 daily["relative_humidity_2m_mean"][i]
             ),
             wind_speed_10m_max=_to_optional_float(daily["wind_speed_10m_max"][i]),
+            source_url=source_url,
         )
         for i, iso_date in enumerate(daily["time"])
     ]
@@ -244,4 +251,5 @@ class OpenMeteoClient:
         }
         response = self._client.get(self._settings.openmeteo_base_url, params=params)
         response.raise_for_status()
-        return _parse_daily_payload(region.iso_code, response.json())
+        source_url = str(response.request.url)
+        return _parse_daily_payload(region.iso_code, source_url, response.json())

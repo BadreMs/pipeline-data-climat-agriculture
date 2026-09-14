@@ -247,17 +247,23 @@ def load_agriculture_regional(settings: Settings | None = None) -> tuple[pd.Data
 
     Comportement :
     - `settings.datagovma_agriculture_url` vide -> fixture mock, source
-      'mock-fallback'.
+      'mock-not-configured' (choix explicite, pas une panne : rien n'est
+      degrade, c'est l'etat par defaut du projet - cf. Phase 1 etape 4).
     - URL configuree mais inaccessible (reseau, timeout, 404, etc.) -> fixture
-      mock, source 'mock-fallback', avec un WARNING logue.
+      mock, source 'mock-fallback-network-error', avec un WARNING logue (ceci
+      EST une degradation par rapport a ce qui etait attendu).
     - URL configuree ET accessible mais colonnes attendues manquantes dans le
       CSV distant -> ValueError (fail fast, PAS de fallback : un CSV distant
       qui repond mais dont le schema a change est une erreur de configuration
       a corriger, pas une panne reseau a masquer).
     - Fixture mock elle-meme corrompue (colonnes manquantes) -> ValueError.
 
-    Retourne (df, source) avec source in {'datagovma', 'mock-fallback'}, a
-    propager tel quel dans upsert_agriculture_regional(df, source=source, ...).
+    Retourne (df, source) avec source in {'datagovma', 'mock-not-configured',
+    'mock-fallback-network-error'}, a propager tel quel dans
+    upsert_agriculture_regional(df, source=source, ...). L'appelant (run.py)
+    distingue les deux etats mock : seul 'mock-fallback-network-error' doit
+    etre traite comme un resultat partiel/degrade (exit code non-zero),
+    'mock-not-configured' est un succes normal (exit 0).
     df expose exactement region_code, annee, production_tonnes,
     surface_irriguee_ha, ressource_hydrique_m3 ; les lignes a region ou annee
     invalide sont ignorees (WARNING), jamais une exception.
@@ -267,14 +273,14 @@ def load_agriculture_regional(settings: Settings | None = None) -> tuple[pd.Data
 
     if not url:
         logger.warning("DATAGOVMA_AGRICULTURE_URL non configuree, utilisation du mock.")
-        return _load_mock_fixture(), "mock-fallback"
+        return _load_mock_fixture(), "mock-not-configured"
 
     try:
         response = httpx.get(url, timeout=30.0, follow_redirects=True)
         response.raise_for_status()
     except httpx.HTTPError as exc:
         logger.warning("Telechargement data.gov.ma echoue (%s), utilisation du mock.", exc)
-        return _load_mock_fixture(), "mock-fallback"
+        return _load_mock_fixture(), "mock-fallback-network-error"
 
     df = _read_tabular_bytes(response.content)
     df = _normalize_columns(df)

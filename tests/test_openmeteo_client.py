@@ -93,18 +93,44 @@ def test_fetch_region_success_single_chunk(respx_mock: Any, test_settings: Setti
         records = client.fetch_region(TEST_REGION, date(2024, 1, 1), date(2024, 1, 2))
 
     assert len(records) == 2
-    assert records[0] == WeatherDailyRecord(
-        region_code="MA-04",
-        date=date(2024, 1, 1),
-        temperature_2m_max=10.0,
-        temperature_2m_min=10.0,
-        temperature_2m_mean=10.0,
-        precipitation_sum=10.0,
-        et0_fao_evapotranspiration=10.0,
-        shortwave_radiation_sum=10.0,
-        relative_humidity_2m_mean=10.0,
-        wind_speed_10m_max=10.0,
+    record = records[0]
+    assert record.region_code == "MA-04"
+    assert record.date == date(2024, 1, 1)
+    assert record.temperature_2m_max == 10.0
+    assert record.temperature_2m_min == 10.0
+    assert record.temperature_2m_mean == 10.0
+    assert record.precipitation_sum == 10.0
+    assert record.et0_fao_evapotranspiration == 10.0
+    assert record.shortwave_radiation_sum == 10.0
+    assert record.relative_humidity_2m_mean == 10.0
+    assert record.wind_speed_10m_max == 10.0
+    assert record.source_url.startswith(TEST_URL)
+
+
+def test_source_url_is_exact_per_chunk_request_url(
+    respx_mock: Any, test_settings: Settings
+) -> None:
+    route = respx_mock.get(TEST_URL).mock(
+        side_effect=[
+            httpx.Response(200, json=_daily_payload(["2015-01-01"])),
+            httpx.Response(200, json=_daily_payload(["2017-01-01"])),
+        ]
     )
+
+    with OpenMeteoClient(test_settings) as client:
+        records = client.fetch_region(TEST_REGION, date(2015, 1, 1), date(2018, 12, 31))
+
+    assert route.call_count == 2
+    first_request_url = str(route.calls[0].request.url)
+    second_request_url = str(route.calls[1].request.url)
+    assert first_request_url != second_request_url
+    assert records[0].source_url == first_request_url
+    assert records[1].source_url == second_request_url
+    assert "start_date=2015-01-01" in first_request_url
+    assert "end_date=2016-12-31" in first_request_url
+    assert "start_date=2017-01-01" in second_request_url
+    assert "end_date=2018-12-31" in second_request_url
+    assert f"latitude={TEST_REGION.latitude}" in first_request_url
 
 
 def test_fetch_region_splits_into_two_year_chunks(respx_mock: Any, test_settings: Settings) -> None:
@@ -290,11 +316,13 @@ def test_to_row_returns_expected_dict() -> None:
         shortwave_radiation_sum=11.0,
         relative_humidity_2m_mean=60.0,
         wind_speed_10m_max=14.0,
+        source_url=TEST_URL,
     )
     row = record.to_row()
     assert row["region_code"] == "MA-04"
     assert row["date"] == date(2024, 1, 1)
     assert row["temperature_2m_max"] == 20.0
+    assert row["source_url"] == TEST_URL
 
 
 def test_records_to_dataframe_columns() -> None:
@@ -310,6 +338,7 @@ def test_records_to_dataframe_columns() -> None:
             shortwave_radiation_sum=11.0,
             relative_humidity_2m_mean=60.0,
             wind_speed_10m_max=14.0,
+            source_url=TEST_URL,
         )
     ]
     df = records_to_dataframe(records)
@@ -324,6 +353,7 @@ def test_records_to_dataframe_columns() -> None:
         "shortwave_radiation_sum",
         "relative_humidity_2m_mean",
         "wind_speed_10m_max",
+        "source_url",
     ]
     assert len(df) == 1
 

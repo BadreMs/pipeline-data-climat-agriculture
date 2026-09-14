@@ -99,19 +99,30 @@ def _upsert(
     source: str,
     source_url: str | None,
 ) -> int:
-    """Upsert generique (ON CONFLICT unique_cols DO UPDATE) partage par les 2 tables raw."""
+    """Upsert generique (ON CONFLICT unique_cols DO UPDATE) partage par les 2 tables raw.
+
+    Si `df` contient une colonne `source_url` (cas du client Open-Meteo, une URL
+    exacte par chunk/ligne), elle prime ligne par ligne sur le parametre
+    `source_url` : celui-ci ne sert alors que de repli si jamais cette colonne
+    manquait. Sans cette colonne (cas agriculture, une seule source par appel),
+    le parametre `source_url` s'applique tel quel a toutes les lignes.
+    """
     if df.empty:
         return 0
 
     known_columns = {col.name for col in table.columns}
     data_columns = [c for c in df.columns if c in known_columns]
+    per_row_source_urls = df["source_url"].tolist() if "source_url" in df.columns else None
+
     raw_records = df[data_columns].to_dict(orient="records")
     records: list[dict[str, Any]] = [
         {str(key): value for key, value in record.items()} for record in raw_records
     ]
-    for record in records:
+    for index, record in enumerate(records):
         record["_source"] = source
-        record["_source_url"] = source_url
+        record["_source_url"] = (
+            per_row_source_urls[index] if per_row_source_urls is not None else source_url
+        )
         record["_batch_id"] = batch_id
 
     stmt = pg_insert(table).values(records)

@@ -57,6 +57,8 @@ CREATE TABLE raw.agriculture_regional (
 COMMENT ON TABLE raw.agriculture_regional IS
     'Donnees agricoles/hydriques annuelles par region (data.gov.ma ou fixture mock), brutes.';
 COMMENT ON COLUMN raw.agriculture_regional._source IS
-    'Origine : ''datagovma'' ou ''mock-fallback'' (voir ingestion/datagovma_loader.py).';
+    'Origine : ''datagovma'', ''mock-not-configured'' (aucune URL definie, '
+    'etat par defaut) ou ''mock-fallback-network-error'' (URL definie mais '
+    'inaccessible) - voir ingestion/datagovma_loader.py.';
 COMMENT ON COLUMN raw.agriculture_regional._source_url IS
     'URL du CSV/XLSX source ; NULL si _source = ''mock-fallback''.';
