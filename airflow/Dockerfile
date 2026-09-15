@@ -13,6 +13,7 @@ USER airflow
 
 # Le package ingestion/ est copie et installe pour etre importable depuis les DAGs.
 COPY --chown=airflow:root pyproject.toml /opt/airflow/project/pyproject.toml
+COPY --chown=airflow:root README.md /opt/airflow/project/README.md
 COPY --chown=airflow:root ingestion /opt/airflow/project/ingestion
 
 RUN pip install --no-cache-dir "/opt/airflow/project" \
