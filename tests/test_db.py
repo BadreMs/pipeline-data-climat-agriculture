@@ -23,16 +23,20 @@ BATCH_ID = uuid.uuid4()
 
 
 def _compiled_sql(stmt: Any) -> str:
-    dialect = postgresql.dialect()  # type: ignore[no-untyped-call]
+    dialect = postgresql.dialect()
     return str(stmt.compile(dialect=dialect))
 
 
 def test_get_engine_uses_settings_dsn() -> None:
     settings = Settings(
-        postgres_user="u", postgres_password="p", postgres_host="h", postgres_dwh_db="d"
+        postgres_user="u",
+        postgres_password="p",
+        postgres_host="h",
+        postgres_port=5432,
+        postgres_dwh_db="d",
     )
     engine = get_engine(settings)
-    assert engine.url.render_as_string(hide_password=False) == "postgresql+psycopg://u:p@h:5432/d"
+    assert engine.url.render_as_string(hide_password=False) == "postgresql+psycopg2://u:p@h:5432/d"
 
 
 def test_upsert_weather_daily_compiles_on_conflict_clause() -> None:
@@ -55,7 +59,7 @@ def test_upsert_weather_daily_injects_audit_columns() -> None:
     upsert_weather_daily(conn, df, batch_id=BATCH_ID, source="open-meteo-archive", source_url="https://x")
 
     stmt = conn.execute.call_args.args[0]
-    dialect = postgresql.dialect()  # type: ignore[no-untyped-call]
+    dialect = postgresql.dialect()
     compiled_params = stmt.compile(dialect=dialect).params
     assert "open-meteo-archive" in compiled_params.values()
     assert "https://x" in compiled_params.values()
@@ -84,7 +88,7 @@ def test_upsert_weather_daily_accepts_source_url_column() -> None:
     upsert_weather_daily(conn, df, batch_id=BATCH_ID, source_url="https://ignored-fallback")
 
     stmt = conn.execute.call_args.args[0]
-    compiled = stmt.compile(dialect=postgresql.dialect())  # type: ignore[no-untyped-call]
+    compiled = stmt.compile(dialect=postgresql.dialect())
     all_params = compiled.params
     per_row_urls = {v for k, v in all_params.items() if "source_url" in k}
     assert per_row_urls == {
@@ -133,7 +137,7 @@ def test_upsert_agriculture_regional_requires_source() -> None:
 
 
 def test_get_connection_commits_on_success() -> None:
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine("sqlite:///:memory:", future=True)
     with get_connection(engine=engine) as conn:
         conn.exec_driver_sql("CREATE TABLE t (id INTEGER)")
         conn.exec_driver_sql("INSERT INTO t VALUES (1)")
@@ -144,7 +148,7 @@ def test_get_connection_commits_on_success() -> None:
 
 
 def test_get_connection_rolls_back_on_exception() -> None:
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine("sqlite:///:memory:", future=True)
     with engine.connect() as setup_conn:
         setup_conn.exec_driver_sql("CREATE TABLE t (id INTEGER)")
         setup_conn.commit()

@@ -26,7 +26,7 @@ def test_defaults_match_env_example_when_no_env_file() -> None:
 
 def test_dwh_dsn_format() -> None:
     settings = Settings()
-    assert settings.dwh_dsn == "postgresql+psycopg://pipeline:changeme@localhost:5432/dwh"
+    assert settings.dwh_dsn == "postgresql+psycopg2://pipeline:changeme@localhost:5432/dwh"
 
 
 def test_blank_openmeteo_end_date_is_none(monkeypatch: MonkeyPatch) -> None:

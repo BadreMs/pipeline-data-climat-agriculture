@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     def dwh_dsn(self) -> str:
         """DSN SQLAlchemy vers la base dwh (schemas raw/staging/marts)."""
         return (
-            f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
+            f"postgresql+psycopg2://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_dwh_db}"
         )
 

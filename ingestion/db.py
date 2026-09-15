@@ -9,19 +9,18 @@ import pandas as pd
 from sqlalchemy import (
     TIMESTAMP,
     Column,
-    Connection,
     Date,
-    Engine,
     Integer,
     MetaData,
     Numeric,
     Table,
     Text,
-    Uuid,
     create_engine,
     func,
 )
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.engine import Connection, Engine
 
 from ingestion.config import Settings, get_settings
 
@@ -43,7 +42,7 @@ weather_daily = Table(
     Column("_source", Text, nullable=False),
     Column("_source_url", Text),
     Column("_ingested_at", TIMESTAMP(timezone=True), nullable=False),
-    Column("_batch_id", Uuid, nullable=False),
+    Column("_batch_id", PG_UUID(as_uuid=True), nullable=False),
 )
 
 agriculture_regional = Table(
@@ -57,14 +56,14 @@ agriculture_regional = Table(
     Column("_source", Text, nullable=False),
     Column("_source_url", Text),
     Column("_ingested_at", TIMESTAMP(timezone=True), nullable=False),
-    Column("_batch_id", Uuid, nullable=False),
+    Column("_batch_id", PG_UUID(as_uuid=True), nullable=False),
 )
 
 
 def get_engine(settings: Settings | None = None) -> Engine:
     """Construit l'Engine SQLAlchemy vers la base dwh (lazy, a reutiliser)."""
     settings = settings or get_settings()
-    return create_engine(settings.dwh_dsn)
+    return create_engine(settings.dwh_dsn, future=True)
 
 
 @contextmanager
