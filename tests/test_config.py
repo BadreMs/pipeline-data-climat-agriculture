@@ -11,8 +11,11 @@ from ingestion.config import Settings
 
 @pytest.fixture(autouse=True)
 def _isolated_cwd(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-    """Evite qu'un vrai .env du repo n'interfere avec les valeurs par defaut testees."""
+    """Evite qu'un vrai .env (fichier ou env process) n'interfere avec les
+    valeurs par defaut testees."""
     monkeypatch.chdir(tmp_path)
+    for field in Settings.model_fields:
+        monkeypatch.delenv(field.upper(), raising=False)
 
 
 def test_defaults_match_env_example_when_no_env_file() -> None:
