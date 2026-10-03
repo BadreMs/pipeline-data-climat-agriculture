@@ -1,0 +1,31 @@
+version: 2
+
+seeds:
+  - name: dim_region
+    description: >
+      Referentiel des 12 regions du Maroc (ISO 3166-2:MA). Genere depuis
+      ingestion/regions.py via scripts/export_dim_region.py : ne pas editer a la main.
+    columns:
+      - name: region_code
+        description: Code ISO 3166-2:MA (ex. MA-04).
+        data_tests:
+          - unique
+          - not_null
+          - accepted_values:
+              values: ["MA-01", "MA-02", "MA-03", "MA-04", "MA-05", "MA-06",
+                       "MA-07", "MA-08", "MA-09", "MA-10", "MA-11", "MA-12"]
+      - name: region_name
+        description: Nom officiel de la region.
+        data_tests: [not_null]
+      - name: capital
+        description: Chef-lieu de la region.
+        data_tests: [not_null]
+      - name: latitude
+        description: Latitude du point de mesure climatique (degres decimaux).
+        data_tests: [not_null]
+      - name: longitude
+        description: Longitude du point de mesure climatique (degres decimaux).
+        data_tests: [not_null]
+      - name: altitude_m
+        description: Altitude du point de mesure (metres).
+        data_tests: [not_null]

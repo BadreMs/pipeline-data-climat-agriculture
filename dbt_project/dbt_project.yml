@@ -12,6 +12,10 @@ snapshot-paths: ["snapshots"]
 
 clean-targets: ["target", "dbt_packages"]
 
+seeds:
+  pipeline_data_climat_agriculture:
+    +schema: marts
+
 models:
   pipeline_data_climat_agriculture:
     staging:

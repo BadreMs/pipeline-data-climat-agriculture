@@ -1,0 +1,13 @@
+region_code,region_name,capital,latitude,longitude,altitude_m
+MA-01,Tanger-Tétouan-Al Hoceïma,Tanger-Assilah,35.7669,-5.8,20.0
+MA-02,L'Oriental,Oujda,34.6867,-1.9114,450.0
+MA-03,Fès-Meknès,Fès,34.05,-4.9831,400.0
+MA-04,Rabat-Salé-Kénitra,Rabat,34.0211,-6.8414,75.0
+MA-05,Béni Mellal-Khénifra,Béni Mellal,32.3394,-6.3608,500.0
+MA-06,Casablanca-Settat,Casablanca,33.5785,-7.6066,50.0
+MA-07,Marrakech-Safi,Marrakech,31.6294,-7.9811,450.0
+MA-08,Darâa-Tafilalet,Errachidia,31.9319,-4.4244,1009.0
+MA-09,Souss-Massa,Agadir,30.4167,-9.6,47.0
+MA-10,Guelmim-Oued Noun,Guelmim,28.9881,-10.0575,456.0
+MA-11,Laâyoune-Saguia El Hamra,Laâyoune,27.1536,-13.2033,63.0
+MA-12,Dakhla-Oued Ed-Dahab,Oued-Eddahab,23.7167,-15.95,5.0

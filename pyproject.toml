@@ -60,4 +60,5 @@ exclude = ["dbt_project/", "airflow/dags/"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-ra -q"
