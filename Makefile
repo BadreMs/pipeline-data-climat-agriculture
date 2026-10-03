@@ -1,4 +1,10 @@
-.PHONY: up down logs init-db ingest ingest-dry ingest-quick dags-check dbt-run dbt-test test lint format streamlit sync
+# Charge .env et l'exporte dans l'environnement des recettes : env_var() de
+# dbt_project/profiles.yml lit l'env du process, pas le fichier .env.
+-include .env
+export
+
+.PHONY: up down logs init-db ingest ingest-dry ingest-quick dags-check test lint format streamlit sync
+.PHONY: dbt-deps dbt-check dbt-check-docker
 
 # Demarre Postgres + Airflow (webserver/scheduler)
 up:
@@ -33,11 +39,18 @@ ingest-quick:
 dags-check:
 	docker compose exec airflow-scheduler airflow dags list-import-errors
 
-dbt-run:
-	uv run dbt run --project-dir dbt_project --profiles-dir dbt_project
+# Installe les packages dbt (dbt_utils) dans dbt_project/dbt_packages
+dbt-deps:
+	uv run dbt deps --project-dir dbt_project --profiles-dir dbt_project
 
-dbt-test:
-	uv run dbt test --project-dir dbt_project --profiles-dir dbt_project
+# Verifie packages + profil + connexion DWH en local (Postgres up, host:5433 via .env)
+dbt-check: dbt-deps
+	uv run dbt debug --project-dir dbt_project --profiles-dir dbt_project
+
+# Idem dans le container Airflow (necessite `make up`). GATE : POSTGRES_PORT doit valoir
+# 5432 (reseau Docker), sinon dbt viserait le port host 5433 et echouerait.
+dbt-check-docker:
+	docker compose exec -T airflow-scheduler bash -c 'test "$$POSTGRES_PORT" = "5432" || { echo "GATE FAIL: POSTGRES_PORT=$$POSTGRES_PORT (attendu 5432)"; exit 1; }; dbt deps --project-dir /opt/airflow/dbt_project --profiles-dir /opt/airflow/dbt_project && dbt debug --project-dir /opt/airflow/dbt_project --profiles-dir /opt/airflow/dbt_project'
 
 test:
 	uv run pytest

@@ -1,0 +1,25 @@
+name: pipeline_data_climat_agriculture
+version: "0.1.0"
+config-version: 2
+profile: pipeline_data_climat_agriculture
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+snapshot-paths: ["snapshots"]
+
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  pipeline_data_climat_agriculture:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table

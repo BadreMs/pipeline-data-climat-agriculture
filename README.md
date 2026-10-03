@@ -43,9 +43,9 @@ make up
 # 4. Lancer l'ingestion locale (Phase 1)
 make ingest
 
-# 5. Lancer les transformations dbt (Phase 3)
-make dbt-run
-make dbt-test
+# 5. Installer les packages dbt et vérifier la config (Phase 3)
+make dbt-deps
+make dbt-check
 
 # 6. Lancer le dashboard de démo
 make streamlit

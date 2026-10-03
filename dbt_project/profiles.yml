@@ -1,0 +1,14 @@
+pipeline_data_climat_agriculture:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | as_number }}"
+      user: "{{ env_var('POSTGRES_USER') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"
+      dbname: "{{ env_var('POSTGRES_DWH_DB') }}"
+      # Fallback pour modèles sans +schema explicite. Tous nos modèles en ont
+      # un, donc cette valeur n'est jamais utilisée en pratique.
+      schema: staging
+      threads: 4
