@@ -4,7 +4,7 @@
 export
 
 .PHONY: up down logs init-db ingest ingest-dry ingest-quick dags-check test lint format streamlit sync
-.PHONY: dbt-deps dbt-check dbt-check-docker
+.PHONY: dbt-deps dbt-check dbt-check-docker dbt-seed dbt-run dbt-test
 
 # Demarre Postgres + Airflow (webserver/scheduler)
 up:
@@ -51,6 +51,18 @@ dbt-check: dbt-deps
 # 5432 (reseau Docker), sinon dbt viserait le port host 5433 et echouerait.
 dbt-check-docker:
 	docker compose exec -T airflow-scheduler bash -c 'test "$$POSTGRES_PORT" = "5432" || { echo "GATE FAIL: POSTGRES_PORT=$$POSTGRES_PORT (attendu 5432)"; exit 1; }; dbt deps --project-dir /opt/airflow/dbt_project --profiles-dir /opt/airflow/dbt_project && dbt debug --project-dir /opt/airflow/dbt_project --profiles-dir /opt/airflow/dbt_project'
+
+# Charge le seed dim_region (marts.dim_region) depuis dbt_project/seeds/dim_region.csv
+dbt-seed:
+	uv run dbt seed --project-dir dbt_project --profiles-dir dbt_project
+
+# Construit staging (views), intermediate (views) et marts (tables)
+dbt-run:
+	uv run dbt run --project-dir dbt_project --profiles-dir dbt_project
+
+# Tests dbt (sources, seeds, modeles)
+dbt-test:
+	uv run dbt test --project-dir dbt_project --profiles-dir dbt_project
 
 test:
 	uv run pytest

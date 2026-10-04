@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: fct_region_climate_kpi
+    description: KPI secheresse par region x annee (ratio P/ET0, classe, jours secs, SPI simplifie).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [region_code, year]
+    columns:
+      - name: region_code
+        data_tests:
+          - not_null
+          - relationships: {to: "ref('dim_region')", field: region_code}
+      - name: region_name
+        data_tests: [not_null]
+      - name: year
+        data_tests: [not_null]
+      - name: precip_et0_ratio
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0}
+      - name: drought_class
+        description: Null pour les annees incompletes.
+        data_tests:
+          - accepted_values: {values: [tres_sec, sec, normal, humide]}
+      - name: dry_days_ratio
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 1}
+      - name: agriculture_is_mock
+        description: true = colonnes agricoles synthetiques (fixture), a signaler a l'affichage.
+
+  - name: fct_solar_potential
+    description: Potentiel solaire par region x annee (kWh/m2/jour, score 0-100).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [region_code, year]
+    columns:
+      - name: region_code
+        data_tests:
+          - not_null
+          - relationships: {to: "ref('dim_region')", field: region_code}
+      - name: year
+        data_tests: [not_null]
+      - name: solar_radiation_avg_kwh_m2_day
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 12}
+      - name: solar_potential_score
+        description: 0-100, null pour les annees incompletes.
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}

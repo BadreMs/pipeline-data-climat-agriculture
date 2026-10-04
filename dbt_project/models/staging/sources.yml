@@ -1,0 +1,26 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: weather_daily
+        description: Observations Open-Meteo journalieres par region (brut).
+        data_tests:
+          - dbt_utils.unique_combination_of_columns:
+              combination_of_columns: [region_code, date]
+        columns:
+          - name: region_code
+            data_tests: [not_null]
+          - name: date
+            data_tests: [not_null]
+      - name: agriculture_regional
+        description: Donnees agricoles/hydriques annuelles par region (brut, mock par defaut).
+        data_tests:
+          - dbt_utils.unique_combination_of_columns:
+              combination_of_columns: [region_code, annee]
+        columns:
+          - name: region_code
+            data_tests: [not_null]
+          - name: annee
+            data_tests: [not_null]

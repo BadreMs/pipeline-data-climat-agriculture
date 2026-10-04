@@ -43,9 +43,12 @@ make up
 # 4. Lancer l'ingestion locale (Phase 1)
 make ingest
 
-# 5. Installer les packages dbt et vérifier la config (Phase 3)
+# 5. Transformations dbt (Phase 3) : packages, config, seed, modèles, tests
 make dbt-deps
 make dbt-check
+make dbt-seed
+make dbt-run
+make dbt-test
 
 # 6. Lancer le dashboard de démo
 make streamlit
@@ -105,7 +108,7 @@ make ingest   # backfill complet, 12 regions, periode par defaut (.env)
 |---|---|---|
 | `dag_ingest_openmeteo` | `0 3 * * *` (quotidien, 03h00 Africa/Casablanca) | Fenêtre glissante de 5 jours (couvre le délai de consolidation de l'archive Open-Meteo) — 1 seule tâche pour les 12 régions |
 | `dag_ingest_agriculture` | `0 4 1 * *` (mensuel, le 1er) | `--skip-weather`, pas de plage de dates |
-| `dag_transform_dbt` | `None` (déclenchement manuel) | Squelette Phase 3 — `dbt run` → `dbt test`, sera activé une fois `dbt_project/` peuplé |
+| `dag_transform_dbt` | `30 4 * * *` (quotidien, 04h30 Africa/Casablanca) | `dbt deps` → `dbt seed` → `dbt run` → `dbt test`, après l'ingestion météo de 03h00 |
 
 Tous les DAGs : `catchup=False`, `max_active_runs=1`, `retries=2` (délai 5 min). Les tâches d'ingestion appellent `airflow/scripts/run_ingestion.sh` (pas `python -m ingestion.run` directement) : ce wrapper traduit l'exit code **1** (succès partiel — chunks météo en échec, ou agriculture en `mock-fallback-network-error`) en **0**, pour éviter des retries Airflow sur un résultat qui n'est pas un échec. L'exit code **2** (erreur fatale) reste propagé et déclenche bien les retries.
 

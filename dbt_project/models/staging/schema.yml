@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: stg_weather_daily
+    description: Meteo journaliere typee, 1 ligne = region x jour.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [region_code, observation_date]
+    columns:
+      - name: region_code
+        data_tests:
+          - not_null
+          - relationships: {to: "ref('dim_region')", field: region_code}
+      - name: observation_date
+        data_tests: [not_null]
+      - name: precipitation_mm
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0}
+      - name: et0_mm
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0}
+      - name: solar_radiation_mj_m2
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0}
+      - name: humidity_mean_pct
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100}
+      - name: temp_mean_c
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: -20, max_value: 55}
+
+  - name: stg_agriculture_regional
+    description: Agriculture/hydrique annuelle typee, 1 ligne = region x annee (mock par defaut).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [region_code, year]
+    columns:
+      - name: region_code
+        data_tests:
+          - not_null
+          - relationships: {to: "ref('dim_region')", field: region_code}
+      - name: year
+        data_tests: [not_null]
+      - name: is_mock
+        data_tests: [not_null]
+      - name: production_tonnes
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0}
+      - name: irrigated_area_ha
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0}
+      - name: water_resource_m3
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0}

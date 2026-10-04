@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: int_weather_agriculture_join
+    description: Meteo agregee par region x annee + agriculture (left join, mock par defaut).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [region_code, year]
+    columns:
+      - name: region_code
+        data_tests:
+          - not_null
+          - relationships: {to: "ref('dim_region')", field: region_code}
+      - name: year
+        data_tests: [not_null]
+      - name: water_balance_coverage
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 1}
+      - name: solar_coverage
+        data_tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 1}
