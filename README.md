@@ -1,150 +1,138 @@
 # Pipeline Data Climat & Agriculture
 
-Pipeline data end-to-end qui croise des données climatiques ([Open-Meteo](https://open-meteo.com/)) et des données agricoles/hydriques ouvertes ([data.gov.ma](https://data.gov.ma/)) pour produire des indicateurs de sécheresse et de potentiel solaire par région du Maroc.
+[![CI](https://github.com/BadreMs/pipeline-data-climat-agriculture/actions/workflows/ci.yml/badge.svg)](https://github.com/BadreMs/pipeline-data-climat-agriculture/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+![mypy](https://img.shields.io/badge/mypy-strict-2a6db2)
+![ruff](https://img.shields.io/badge/lint-ruff-261230)
 
-Architecture multi-cloud : orchestration et stockage locaux (Docker Compose : Postgres + Airflow + dbt), puis extension Azure (Data Factory, ADLS Gen2, Databricks, Azure SQL DB) documentée en Phase 5.
+Pipeline de données de bout en bout (ingestion, orchestration, transformation dbt, dashboard) qui
+croise la météo [Open-Meteo](https://open-meteo.com/) et des données agricoles pour produire, pour
+les 12 régions du Maroc, des indicateurs de **sécheresse** et de **potentiel solaire** de 2015 à
+aujourd'hui. Les données agricoles sont **synthétiques** (voir [Limites connues](#limites-connues)).
+Une extension Azure (Data Factory, ADLS Gen2, Databricks, Azure SQL) est fournie en code et en
+documentation, sans déploiement.
 
-> **Note technique** : le dossier racine de ce dépôt (`Pipeline Data Climat & Agriculture`) contient des espaces et un `&`. Le nom de package/projet technique utilisé partout ailleurs (pyproject.toml, Docker Compose, imports Python) est `pipeline-data-climat-agriculture`.
+## Architecture
+
+```mermaid
+flowchart LR
+    OM[Open-Meteo<br/>API archive] --> ING
+    DG[data.gov.ma<br/>ou fixture mock] --> ING
+    subgraph LOCAL [Local - Docker Compose]
+        AF[Airflow<br/>3 DAGs] -.orchestre.-> ING[ingestion/<br/>Python]
+        ING --> RAW[(Postgres raw<br/>bronze)]
+        RAW --> STG[dbt staging<br/>silver]
+        STG --> INT[dbt intermediate]
+        INT --> MARTS[(dbt marts<br/>gold)]
+        MARTS --> APP[Streamlit]
+    end
+    MARTS -.équivalent Azure, non déployé.-> AZ[ADF · ADLS · Databricks<br/>Azure SQL · Power BI]
+```
+
+Architecture **medallion** : bronze (`raw`) → silver (`staging`) → gold (`marts`). Détails, règles
+métier et correspondance avec Azure : [docs/architecture.md](docs/architecture.md).
 
 ## Stack technique
 
-| Domaine | Outil |
+| Couche | Outils |
 |---|---|
-| Langage | Python 3.11+ |
-| Packaging | [uv](https://docs.astral.sh/uv/) |
-| Orchestration | Apache Airflow (Docker Compose, LocalExecutor) |
-| Stockage local | PostgreSQL 15 (Docker) |
-| Transformations | dbt-core + dbt-postgres |
-| Cloud (phase 2) | Azure Data Factory, ADLS Gen2, Databricks/PySpark, Azure SQL DB |
-| Restitution | Streamlit (démo locale) + modèle Power BI documenté |
-| Qualité | pytest, ruff, mypy, pre-commit |
+| Langage, packaging | Python 3.11, [uv](https://docs.astral.sh/uv/) (lockfile gelé) |
+| Ingestion | httpx + tenacity (retries, chunks de 2 ans), pandas, SQLAlchemy 1.4, psycopg2 |
+| Orchestration | Apache Airflow 2.9.3 (Docker Compose, LocalExecutor) |
+| Stockage | PostgreSQL 15 (schémas `raw` / `staging` / `intermediate` / `marts`) |
+| Transformation | dbt-core 1.8 + dbt-postgres 1.8, dbt_utils 1.3 (51 tests) |
+| Restitution | Streamlit, pydeck (carte), plotly (séries), export CSV |
+| Qualité | pytest, ruff, mypy `--strict`, pre-commit, GitHub Actions |
+| Cloud cible *(non déployé)* | Azure Data Factory, ADLS Gen2, Databricks (PySpark), Azure SQL DB, Power BI |
 
-## Architecture (medallion)
+## Quickstart local
 
-```
-Bronze (raw) → Silver (staging) → Gold (marts)
-```
-
-- **Local** : Postgres, schémas `raw` / `staging` / `marts`, transformés via dbt.
-- **Azure** (cible phase 2) : ADLS Gen2 (bronze/silver/gold) + Databricks + Azure SQL DB.
-
-## Quickstart
+Prérequis : Docker (avec Compose), [uv](https://docs.astral.sh/uv/), Python 3.11+, `make`
+(optionnel : équivalents dans le [runbook](docs/runbook.md#quickstart-local-5-minutes)).
 
 ```bash
-# 1. Copier et compléter le fichier d'environnement
-cp .env.example .env
-
-# 2. Installer les dépendances Python (uv)
-uv sync
-
-# 3. Démarrer Postgres + Airflow
-make up
-
-# 4. Lancer l'ingestion locale (Phase 1)
-make ingest
-
-# 5. Transformations dbt (Phase 3) : packages, config, seed, modèles, tests
-make dbt-deps
-make dbt-check
-make dbt-seed
-make dbt-run
-make dbt-test
-
-# 6. Lancer le dashboard de démo
-make streamlit
+cp .env.example .env     # valeurs par défaut adaptées à un essai local
+uv sync                  # dépendances verrouillées
+make up                  # Postgres + Airflow (premier build : quelques minutes)
+make ingest              # backfill 2015 -> aujourd'hui, 12 régions
+make dbt-deps && make dbt-seed && make dbt-run && make dbt-test
+make streamlit           # dashboard sur http://localhost:8501
 ```
 
-Airflow UI : http://localhost:8080 (admin/admin par défaut, cf. `.env.example`).
-Adminer (optionnel, inspection Postgres) : `docker compose --profile tools up -d adminer` puis http://localhost:8081.
+Airflow : http://localhost:8080 (identifiants dans `.env.example`). Dépannage (Windows, ports,
+contraintes Airflow...) : [docs/runbook.md](docs/runbook.md#dépannage).
 
-## Ingestion locale
-
-### CLI
-
-```
-uv run python -m ingestion.run [--start YYYY-MM-DD] [--end YYYY-MM-DD]
-                                [--regions MA-01,MA-04] [--skip-weather]
-                                [--skip-agriculture] [--dry-run] [--verbose]
-```
-
-- `--start` (optionnel) : défaut = `OPENMETEO_START_DATE` (`.env`) si omis (un `WARNING` est loggué dans ce cas).
-- `--end` (optionnel) : défaut = `OPENMETEO_END_DATE` (`.env`) ou aujourd'hui.
-- `--regions` (optionnel) : codes ISO séparés par virgule (`MA-01`..`MA-12`). Défaut = les 12 (ou `MA-04` seul en `--dry-run`).
-- `--skip-weather` / `--skip-agriculture` : désactive l'une des deux sources.
-- `--dry-run` : smoke test — 1 région (MA-04 par défaut), 7 jours (indépendamment de `--start`/`--end`), vrai appel Open-Meteo, **aucune écriture en base**, sortie JSON sur stdout.
-- `--verbose` : logs `DEBUG`.
-
-### Exit codes
-
-- `0` : succès complet (y compris si l'agriculture est en mode `mock-not-configured` — c'est l'état par défaut du projet tant qu'aucune URL data.gov.ma compatible n'a été trouvée, pas une panne).
-- `1` : succès partiel/dégradé — au moins un chunk météo en échec définitif, **ou** l'agriculture est tombée en `mock-fallback-network-error` (une URL était configurée mais inaccessible).
-- `2` : erreur fatale — code région inconnu, dates incohérentes (`--end` < `--start`), CSV agriculture distant accessible mais dont le schéma a changé (colonnes manquantes), base inaccessible.
-
-### Idempotence
-
-Chaque run génère un `batch_id` (uuid4) unique, partagé entre l'upsert météo et agriculture. Un re-run sur la même période écrase proprement les lignes existantes (`ON CONFLICT DO UPDATE`, cf. `sql/init/02_raw_tables.sql`). Chaque ligne météo garde par ailleurs l'URL exacte de la requête Open-Meteo qui l'a produite (`_source_url`), pas une URL générique.
-
-### Exemples
-
-```bash
-make ingest        # 12 regions, periode par defaut (.env)
-make ingest-dry     # smoke test, sans ecriture DB
-make ingest-quick   # 1 region (MA-04), janvier 2024 - iteration rapide en dev
-```
-
-## Orchestration Airflow
-
-### Backfill initial (manuel, une seule fois)
-
-Le backfill historique complet ne passe **pas** par `airflow dags backfill` : `OpenMeteoClient` découpe déjà la période en chunks de 2 ans côté client, donc une seule commande couvre 2015 → aujourd'hui en quelques dizaines de requêtes. Rejouer ça via `airflow dags backfill` exécuterait le DAG quotidien une fois par jour depuis 2015 (~4000 runs) pour un gain nul.
-
-```bash
-make ingest   # backfill complet, 12 regions, periode par defaut (.env)
-```
-
-### DAGs
-
-| DAG | Schedule | Rôle |
-|---|---|---|
-| `dag_ingest_openmeteo` | `0 3 * * *` (quotidien, 03h00 Africa/Casablanca) | Fenêtre glissante de 5 jours (couvre le délai de consolidation de l'archive Open-Meteo) — 1 seule tâche pour les 12 régions |
-| `dag_ingest_agriculture` | `0 4 1 * *` (mensuel, le 1er) | `--skip-weather`, pas de plage de dates |
-| `dag_transform_dbt` | `30 4 * * *` (quotidien, 04h30 Africa/Casablanca) | `dbt deps` → `dbt seed` → `dbt run` → `dbt test`, après l'ingestion météo de 03h00 |
-
-Tous les DAGs : `catchup=False`, `max_active_runs=1`, `retries=2` (délai 5 min). Les tâches d'ingestion appellent `airflow/scripts/run_ingestion.sh` (pas `python -m ingestion.run` directement) : ce wrapper traduit l'exit code **1** (succès partiel — chunks météo en échec, ou agriculture en `mock-fallback-network-error`) en **0**, pour éviter des retries Airflow sur un résultat qui n'est pas un échec. L'exit code **2** (erreur fatale) reste propagé et déclenche bien les retries.
-
-### Vérifier que les DAGs sont valides
-
-```bash
-make up          # demarre Postgres + Airflow
-make dags-check  # equivalent a: docker compose exec airflow-scheduler airflow dags list-import-errors
-```
-
-Aucune dépendance `apache-airflow` n'est installée localement (hors conteneur) : Airflow n'est pas officiellement supporté nativement sur Windows, et les DAGs restent volontairement fins (juste des `BashOperator`) — toute la logique testée (128+ tests) vit dans `ingestion/`. La validation des DAGs se fait via la commande ci-dessus, pas via `make test`.
+> Le dossier racine du dépôt contient des espaces et un `&`. Le nom technique utilisé partout
+> ailleurs (pyproject, Docker Compose, imports) est `pipeline-data-climat-agriculture`.
 
 ## Structure du projet
 
 ```
 pipeline-data-climat-agriculture/
-├── airflow/            # DAGs + image Airflow custom
-├── ingestion/          # Clients Open-Meteo / data.gov.ma
-├── dbt_project/        # Modèles dbt (staging / intermediate / marts)
-├── streamlit/          # Dashboard de démo
-├── azure/              # Code/docs extension Azure (phase 2, sans provisionnement)
-├── sql/init/           # Scripts d'initialisation Postgres (bases + schémas)
-├── tests/              # Tests unitaires
-└── docs/               # Documentation d'architecture
+├── airflow/              # image Airflow, 3 DAGs, wrapper d'ingestion
+├── ingestion/            # clients Open-Meteo / data.gov.ma, upserts idempotents
+├── sql/init/             # DDL Postgres : bases, schémas, tables raw
+├── dbt_project/          # models/{staging,intermediate,marts}, seeds/dim_region, macros
+├── scripts/              # export_dim_region.py : seed généré depuis ingestion/regions.py
+├── dashboard/            # logique testable du dashboard (fonctions pures, requêtes)
+├── streamlit/            # app.py : interface Streamlit
+├── azure/                # medallion Azure : Data Factory, Databricks, SQL, scripts (non déployé)
+├── tests/                # pytest (ingestion, seed, dashboard, artefacts Azure)
+├── docs/                 # architecture.md, runbook.md
+├── .github/workflows/    # CI : ruff, mypy strict, pytest
+└── Makefile · docker-compose.yml · pyproject.toml · uv.lock
 ```
+
+## Résultats : indicateurs produits
+
+12 régions × 11 années complètes (2015-2025) = **132 région-années** ; l'année 2026 est partielle
+(données jusqu'au 15 septembre 2026) et ne reçoit ni classe, ni SPI, ni score. Chiffres issus des
+marts `fct_region_climate_kpi` et `fct_solar_potential`, calculés le 5 octobre 2026 :
+
+| Indicateur | Résultat |
+|---|---|
+| **Potentiel solaire** (moyenne 2015-2025) | de **5,11 kWh/m²/jour** (Tanger-Tétouan-Al Hoceïma, score 52,3) à **6,02** (Dakhla-Oued Ed-Dahab, score 75,2) |
+| **Gradient d'aridité** (précipitations / ET0) | de **0,50** (Tanger-Tétouan-Al Hoceïma, ~650 mm/an) à **0,02** (Laâyoune-Saguia El Hamra, ~39 mm/an) : un facteur ~24 du nord au sud |
+| **Classes de sécheresse** (132 région-années) | 60,6 % `tres_sec`, 32,6 % `sec`, 4,5 % `normal`, 2,3 % `humide` |
+| **Années extrêmes** (SPI simplifié moyen) | 2017 la plus sèche (-0,74), 2018 la plus humide (+1,64) |
+
+Le tableau de bord ([`streamlit/app.py`](streamlit/app.py)) expose ces indicateurs avec filtres
+(année, régions), carte, classements, séries annuelles et export CSV.
+
+## Pipeline Azure
+
+Extension *medallion* sur Azure : Data Factory (ingestion), ADLS Gen2 (bronze / silver / gold),
+Databricks PySpark (transformations), Azure SQL DB en étoile (serving Power BI), scripts de
+déploiement en **simulation par défaut**. **Rien n'a été déployé ni exécuté** : le code est
+vérifié statiquement (JSON, références, DDL, seuils comparés au SQL dbt, mypy/ruff) mais pas sur
+Azure. Architecture, coûts estimés (ordre de grandeur) et procédure : [azure/README.md](azure/README.md).
+
+## Limites connues
+
+- **Agriculture synthétique** : aucune URL data.gov.ma stable ne fournit une série région × année ;
+  une fixture mock est utilisée, signalée par `agriculture_is_mock` jusque dans le dashboard.
+- **Backfill long** : des chunks d'ingestion peuvent être perdus sans signal dans Airflow
+  (constaté et réparé) ; pas encore de test de complétude dbt.
+- **dbt 1.8** (lignée dépréciée), imposé par les contraintes d'Airflow 2.9.3.
+- **Indicateurs simplifiés** : SPI = z-score (pas de loi gamma), un point de mesure par région.
+- **Azure non testé**, et logique métier dupliquée en PySpark par choix de démonstration.
+
+Liste complète : [docs/architecture.md](docs/architecture.md#known-limitations).
 
 ## Roadmap
 
 - [x] Phase 0 — Setup (repo, Docker Compose, tooling qualité)
 - [x] Phase 1 — Ingestion locale (Open-Meteo, data.gov.ma)
 - [x] Phase 2 — Orchestration Airflow
-- [ ] Phase 3 — Transformations dbt
-- [ ] Phase 4 — Restitution Streamlit
-- [ ] Phase 5 — Extension Azure (code + docs)
-- [ ] Phase 6 — Documentation finale
+- [x] Phase 3 — Transformations dbt (staging, intermediate, marts, 51 tests)
+- [x] Phase 4 — Restitution Streamlit
+- [x] Phase 5 — Extension Azure (code + docs, non déployée)
+- [x] Phase 6 — Documentation et CI
 
-## Licence
+Suite envisagée : test de complétude dbt et récapitulatif des chunks en échec, vraie source
+agricole, venv dbt dédié ou `dbt-databricks`, premier déploiement Azure réel.
 
-MIT
+## Licence et auteur
+
+[MIT](LICENSE) © 2026 Badre Moussaili.
