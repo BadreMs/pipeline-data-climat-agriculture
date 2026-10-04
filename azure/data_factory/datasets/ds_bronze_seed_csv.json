@@ -1,0 +1,22 @@
+{
+  "name": "ds_bronze_seed_csv",
+  "properties": {
+    "description": "Fixture agriculture (mock) deposee dans bronze/seed par deploy.sh.",
+    "type": "DelimitedText",
+    "linkedServiceName": {
+      "referenceName": "ls_adls_datalake",
+      "type": "LinkedServiceReference"
+    },
+    "typeProperties": {
+      "location": {
+        "type": "AzureBlobFSLocation",
+        "fileSystem": "bronze",
+        "folderPath": "seed",
+        "fileName": "agriculture_maroc_mock.csv"
+      },
+      "columnDelimiter": ",",
+      "encodingName": "UTF-8",
+      "firstRowAsHeader": true
+    }
+  }
+}

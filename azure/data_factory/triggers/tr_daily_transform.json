@@ -1,0 +1,32 @@
+{
+  "name": "tr_daily_transform",
+  "properties": {
+    "description": "Tous les jours a 04:30 (Maroc), apres l'ingestion meteo, comme dag_transform_dbt.",
+    "type": "ScheduleTrigger",
+    "runtimeState": "Stopped",
+    "pipelines": [
+      {
+        "pipelineReference": {
+          "referenceName": "transform_databricks",
+          "type": "PipelineReference"
+        }
+      }
+    ],
+    "typeProperties": {
+      "recurrence": {
+        "startTime": "2026-01-01T00:00:00",
+        "timeZone": "Morocco Standard Time",
+        "frequency": "Day",
+        "interval": 1,
+        "schedule": {
+          "hours": [
+            4
+          ],
+          "minutes": [
+            30
+          ]
+        }
+      }
+    }
+  }
+}

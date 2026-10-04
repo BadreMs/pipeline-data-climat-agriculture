@@ -1,0 +1,168 @@
+{
+  "name": "ingest_agriculture",
+  "properties": {
+    "description": "Ingestion mensuelle agriculture/hydrique vers ADLS bronze. Sans sourceUrl, la fixture mock de bronze/seed est copiee (meme repli que l'ingestion locale : aucune URL data.gov.ma stable ne fournit aujourd'hui une serie region x annee).",
+    "activities": [
+      {
+        "name": "Set_ingestDate",
+        "type": "SetVariable",
+        "dependsOn": [],
+        "typeProperties": {
+          "variableName": "ingestDate",
+          "value": {
+            "value": "@formatDateTime(utcnow(), 'yyyy-MM-dd')",
+            "type": "Expression"
+          }
+        }
+      },
+      {
+        "name": "IfSourceUrlProvided",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "Set_ingestDate",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@empty(pipeline().parameters.sourceUrl)",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "CopyMockSeedToBronze",
+              "type": "Copy",
+              "policy": {
+                "timeout": "0.00:10:00",
+                "retry": 2,
+                "retryIntervalInSeconds": 300,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "source": {
+                  "type": "DelimitedTextSource",
+                  "storeSettings": {
+                    "type": "AzureBlobFSReadSettings"
+                  },
+                  "formatSettings": {
+                    "type": "DelimitedTextReadSettings"
+                  }
+                },
+                "sink": {
+                  "type": "DelimitedTextSink",
+                  "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings"
+                  },
+                  "formatSettings": {
+                    "type": "DelimitedTextWriteSettings",
+                    "quoteAllText": true
+                  }
+                },
+                "enableStaging": false
+              },
+              "inputs": [
+                {
+                  "referenceName": "ds_bronze_seed_csv",
+                  "type": "DatasetReference"
+                }
+              ],
+              "outputs": [
+                {
+                  "referenceName": "ds_bronze_agriculture_csv",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "ingestDate": {
+                      "value": "@variables('ingestDate')",
+                      "type": "Expression"
+                    },
+                    "source": "mock-not-configured"
+                  }
+                }
+              ]
+            }
+          ],
+          "ifFalseActivities": [
+            {
+              "name": "CopyDataGovMaToBronze",
+              "type": "Copy",
+              "policy": {
+                "timeout": "0.00:10:00",
+                "retry": 2,
+                "retryIntervalInSeconds": 300,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "source": {
+                  "type": "DelimitedTextSource",
+                  "storeSettings": {
+                    "type": "HttpReadSettings",
+                    "requestMethod": "GET"
+                  },
+                  "formatSettings": {
+                    "type": "DelimitedTextReadSettings"
+                  }
+                },
+                "sink": {
+                  "type": "DelimitedTextSink",
+                  "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings"
+                  },
+                  "formatSettings": {
+                    "type": "DelimitedTextWriteSettings",
+                    "quoteAllText": true
+                  }
+                },
+                "enableStaging": false
+              },
+              "inputs": [
+                {
+                  "referenceName": "ds_http_agriculture_csv",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "sourceUrl": {
+                      "value": "@pipeline().parameters.sourceUrl",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ],
+              "outputs": [
+                {
+                  "referenceName": "ds_bronze_agriculture_csv",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "ingestDate": {
+                      "value": "@variables('ingestDate')",
+                      "type": "Expression"
+                    },
+                    "source": "datagovma"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "parameters": {
+      "sourceUrl": {
+        "type": "String",
+        "defaultValue": ""
+      }
+    },
+    "variables": {
+      "ingestDate": {
+        "type": "String"
+      }
+    },
+    "annotations": [
+      "bronze",
+      "agriculture"
+    ]
+  }
+}

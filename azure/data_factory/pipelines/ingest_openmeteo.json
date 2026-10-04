@@ -1,0 +1,241 @@
+{
+  "name": "ingest_openmeteo",
+  "properties": {
+    "description": "Ingestion quotidienne Open-Meteo : une requete par region (sequentielle, comme l'ingestion locale) vers ADLS bronze. Fenetre glissante lookbackDays (defaut 5 jours) ou plage explicite startDate/endDate pour un backfill.",
+    "activities": [
+      {
+        "name": "Set_ingestDate",
+        "type": "SetVariable",
+        "dependsOn": [],
+        "typeProperties": {
+          "variableName": "ingestDate",
+          "value": {
+            "value": "@formatDateTime(utcnow(), 'yyyy-MM-dd')",
+            "type": "Expression"
+          }
+        }
+      },
+      {
+        "name": "Set_windowEnd",
+        "type": "SetVariable",
+        "dependsOn": [
+          {
+            "activity": "Set_ingestDate",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "variableName": "windowEnd",
+          "value": {
+            "value": "@if(empty(pipeline().parameters.endDate), formatDateTime(utcnow(), 'yyyy-MM-dd'), pipeline().parameters.endDate)",
+            "type": "Expression"
+          }
+        }
+      },
+      {
+        "name": "Set_windowStart",
+        "type": "SetVariable",
+        "dependsOn": [
+          {
+            "activity": "Set_windowEnd",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "variableName": "windowStart",
+          "value": {
+            "value": "@if(empty(pipeline().parameters.startDate), formatDateTime(addDays(utcnow(), sub(1, pipeline().parameters.lookbackDays)), 'yyyy-MM-dd'), pipeline().parameters.startDate)",
+            "type": "Expression"
+          }
+        }
+      },
+      {
+        "name": "ForEachRegion",
+        "type": "ForEach",
+        "dependsOn": [
+          {
+            "activity": "Set_windowStart",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "items": {
+            "value": "@pipeline().parameters.regions",
+            "type": "Expression"
+          },
+          "isSequential": true,
+          "activities": [
+            {
+              "name": "CopyOpenMeteoToBronze",
+              "type": "Copy",
+              "policy": {
+                "timeout": "0.00:10:00",
+                "retry": 2,
+                "retryIntervalInSeconds": 300,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "source": {
+                  "type": "RestSource",
+                  "httpRequestTimeout": "00:01:40",
+                  "requestMethod": "GET"
+                },
+                "sink": {
+                  "type": "JsonSink",
+                  "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings"
+                  },
+                  "formatSettings": {
+                    "type": "JsonWriteSettings"
+                  }
+                },
+                "enableStaging": false
+              },
+              "inputs": [
+                {
+                  "referenceName": "ds_openmeteo_archive",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "latitude": {
+                      "value": "@string(item().latitude)",
+                      "type": "Expression"
+                    },
+                    "longitude": {
+                      "value": "@string(item().longitude)",
+                      "type": "Expression"
+                    },
+                    "startDate": {
+                      "value": "@variables('windowStart')",
+                      "type": "Expression"
+                    },
+                    "endDate": {
+                      "value": "@variables('windowEnd')",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ],
+              "outputs": [
+                {
+                  "referenceName": "ds_bronze_openmeteo_json",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "ingestDate": {
+                      "value": "@variables('ingestDate')",
+                      "type": "Expression"
+                    },
+                    "regionCode": {
+                      "value": "@item().code",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "parameters": {
+      "regions": {
+        "type": "Array",
+        "defaultValue": [
+          {
+            "code": "MA-01",
+            "latitude": 35.7669,
+            "longitude": -5.8
+          },
+          {
+            "code": "MA-02",
+            "latitude": 34.6867,
+            "longitude": -1.9114
+          },
+          {
+            "code": "MA-03",
+            "latitude": 34.05,
+            "longitude": -4.9831
+          },
+          {
+            "code": "MA-04",
+            "latitude": 34.0211,
+            "longitude": -6.8414
+          },
+          {
+            "code": "MA-05",
+            "latitude": 32.3394,
+            "longitude": -6.3608
+          },
+          {
+            "code": "MA-06",
+            "latitude": 33.5785,
+            "longitude": -7.6066
+          },
+          {
+            "code": "MA-07",
+            "latitude": 31.6294,
+            "longitude": -7.9811
+          },
+          {
+            "code": "MA-08",
+            "latitude": 31.9319,
+            "longitude": -4.4244
+          },
+          {
+            "code": "MA-09",
+            "latitude": 30.4167,
+            "longitude": -9.6
+          },
+          {
+            "code": "MA-10",
+            "latitude": 28.9881,
+            "longitude": -10.0575
+          },
+          {
+            "code": "MA-11",
+            "latitude": 27.1536,
+            "longitude": -13.2033
+          },
+          {
+            "code": "MA-12",
+            "latitude": 23.7167,
+            "longitude": -15.95
+          }
+        ]
+      },
+      "lookbackDays": {
+        "type": "Int",
+        "defaultValue": 5
+      },
+      "startDate": {
+        "type": "String",
+        "defaultValue": ""
+      },
+      "endDate": {
+        "type": "String",
+        "defaultValue": ""
+      }
+    },
+    "variables": {
+      "ingestDate": {
+        "type": "String"
+      },
+      "windowStart": {
+        "type": "String"
+      },
+      "windowEnd": {
+        "type": "String"
+      }
+    },
+    "annotations": [
+      "bronze",
+      "weather"
+    ]
+  }
+}

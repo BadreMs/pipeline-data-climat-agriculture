@@ -1,0 +1,30 @@
+{
+  "name": "ds_http_agriculture_csv",
+  "properties": {
+    "description": "CSV agriculture/hydrique data.gov.ma (URL passee en parametre).",
+    "type": "DelimitedText",
+    "linkedServiceName": {
+      "referenceName": "ls_http_datagovma",
+      "type": "LinkedServiceReference",
+      "parameters": {
+        "baseUrl": {
+          "value": "@dataset().sourceUrl",
+          "type": "Expression"
+        }
+      }
+    },
+    "parameters": {
+      "sourceUrl": {
+        "type": "String"
+      }
+    },
+    "typeProperties": {
+      "location": {
+        "type": "HttpServerLocation"
+      },
+      "columnDelimiter": ",",
+      "encodingName": "UTF-8",
+      "firstRowAsHeader": true
+    }
+  }
+}

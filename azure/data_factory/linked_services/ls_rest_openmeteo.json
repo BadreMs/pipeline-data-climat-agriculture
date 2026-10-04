@@ -1,0 +1,12 @@
+{
+  "name": "ls_rest_openmeteo",
+  "properties": {
+    "description": "API archive Open-Meteo (publique, sans cle).",
+    "type": "RestService",
+    "typeProperties": {
+      "url": "https://archive-api.open-meteo.com/v1/",
+      "enableServerCertificateValidation": true,
+      "authenticationType": "Anonymous"
+    }
+  }
+}

@@ -1,0 +1,174 @@
+{
+  "name": "transform_databricks",
+  "properties": {
+    "description": "Medallion Databricks : bronze -> silver -> gold (Parquet) -> Azure SQL (tables staging), puis procedure stockee marts.usp_refresh_serving (swap transactionnel).",
+    "activities": [
+      {
+        "name": "BronzeToSilver",
+        "type": "DatabricksNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 300
+        },
+        "typeProperties": {
+          "notebookPath": "/Shared/pipeline-climat-agriculture/01_bronze_to_silver",
+          "baseParameters": {
+            "storageAccountName": {
+              "value": "@pipeline().parameters.storageAccountName",
+              "type": "Expression"
+            },
+            "sqlServerName": {
+              "value": "@pipeline().parameters.sqlServerName",
+              "type": "Expression"
+            },
+            "sqlDatabaseName": {
+              "value": "@pipeline().parameters.sqlDatabaseName",
+              "type": "Expression"
+            },
+            "secretScope": {
+              "value": "@pipeline().parameters.secretScope",
+              "type": "Expression"
+            }
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "ls_databricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "SilverToGold",
+        "type": "DatabricksNotebook",
+        "dependsOn": [
+          {
+            "activity": "BronzeToSilver",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 300
+        },
+        "typeProperties": {
+          "notebookPath": "/Shared/pipeline-climat-agriculture/02_silver_to_gold",
+          "baseParameters": {
+            "storageAccountName": {
+              "value": "@pipeline().parameters.storageAccountName",
+              "type": "Expression"
+            },
+            "sqlServerName": {
+              "value": "@pipeline().parameters.sqlServerName",
+              "type": "Expression"
+            },
+            "sqlDatabaseName": {
+              "value": "@pipeline().parameters.sqlDatabaseName",
+              "type": "Expression"
+            },
+            "secretScope": {
+              "value": "@pipeline().parameters.secretScope",
+              "type": "Expression"
+            }
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "ls_databricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "GoldToSql",
+        "type": "DatabricksNotebook",
+        "dependsOn": [
+          {
+            "activity": "SilverToGold",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 300
+        },
+        "typeProperties": {
+          "notebookPath": "/Shared/pipeline-climat-agriculture/03_gold_to_sql",
+          "baseParameters": {
+            "storageAccountName": {
+              "value": "@pipeline().parameters.storageAccountName",
+              "type": "Expression"
+            },
+            "sqlServerName": {
+              "value": "@pipeline().parameters.sqlServerName",
+              "type": "Expression"
+            },
+            "sqlDatabaseName": {
+              "value": "@pipeline().parameters.sqlDatabaseName",
+              "type": "Expression"
+            },
+            "secretScope": {
+              "value": "@pipeline().parameters.secretScope",
+              "type": "Expression"
+            }
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "ls_databricks",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "RefreshServingTables",
+        "type": "SqlServerStoredProcedure",
+        "dependsOn": [
+          {
+            "activity": "GoldToSql",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 120
+        },
+        "typeProperties": {
+          "storedProcedureName": "[marts].[usp_refresh_serving]"
+        },
+        "linkedServiceName": {
+          "referenceName": "ls_azuresql",
+          "type": "LinkedServiceReference"
+        }
+      }
+    ],
+    "parameters": {
+      "storageAccountName": {
+        "type": "String",
+        "defaultValue": "${STORAGE_ACCOUNT_NAME}"
+      },
+      "sqlServerName": {
+        "type": "String",
+        "defaultValue": "${SQL_SERVER_NAME}"
+      },
+      "sqlDatabaseName": {
+        "type": "String",
+        "defaultValue": "${SQL_DATABASE_NAME}"
+      },
+      "secretScope": {
+        "type": "String",
+        "defaultValue": "kv-climat-agriculture"
+      }
+    },
+    "annotations": [
+      "silver",
+      "gold",
+      "serving"
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "ds_bronze_agriculture_csv",
+  "properties": {
+    "description": "Bronze agriculture : CSV partitionne par ingest_date et source.",
+    "type": "DelimitedText",
+    "linkedServiceName": {
+      "referenceName": "ls_adls_datalake",
+      "type": "LinkedServiceReference"
+    },
+    "parameters": {
+      "ingestDate": {
+        "type": "String"
+      },
+      "source": {
+        "type": "String"
+      }
+    },
+    "typeProperties": {
+      "location": {
+        "type": "AzureBlobFSLocation",
+        "fileSystem": "bronze",
+        "folderPath": {
+          "value": "@concat('agriculture/ingest_date=', dataset().ingestDate, '/source=', dataset().source)",
+          "type": "Expression"
+        },
+        "fileName": "agriculture_regional.csv"
+      },
+      "columnDelimiter": ",",
+      "encodingName": "UTF-8",
+      "firstRowAsHeader": true,
+      "quoteChar": "\""
+    }
+  }
+}

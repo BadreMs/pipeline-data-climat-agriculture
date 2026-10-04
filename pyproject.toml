@@ -48,6 +48,10 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B", "SIM", "N"]
 ignore = []
 
+[tool.ruff.lint.per-file-ignores]
+# `from pyspark.sql import functions as F` : alias conventionnel de PySpark.
+"azure/databricks/notebooks/*.py" = ["N812"]
+
 [tool.ruff.format]
 quote-style = "double"
 

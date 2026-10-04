@@ -1,0 +1,23 @@
+{
+  "name": "ls_databricks",
+  "properties": {
+    "description": "Databricks : job cluster single-node cree a la volee. Auth : MSI.",
+    "type": "AzureDatabricks",
+    "typeProperties": {
+      "domain": "https://${DATABRICKS_WORKSPACE_URL}",
+      "authentication": "MSI",
+      "workspaceResourceId": "${DATABRICKS_WORKSPACE_RESOURCE_ID}",
+      "newClusterNodeType": "Standard_DS3_v2",
+      "newClusterDriverNodeType": "Standard_DS3_v2",
+      "newClusterNumOfWorker": "0",
+      "newClusterVersion": "15.4.x-scala2.12",
+      "newClusterSparkConf": {
+        "spark.databricks.cluster.profile": "singleNode",
+        "spark.master": "local[*, 4]"
+      },
+      "newClusterCustomTags": {
+        "ResourceClass": "SingleNode"
+      }
+    }
+  }
+}

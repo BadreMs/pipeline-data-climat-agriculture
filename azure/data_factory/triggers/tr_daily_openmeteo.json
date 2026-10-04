@@ -1,0 +1,32 @@
+{
+  "name": "tr_daily_openmeteo",
+  "properties": {
+    "description": "Tous les jours a 03:00 (Maroc), comme dag_ingest_openmeteo.",
+    "type": "ScheduleTrigger",
+    "runtimeState": "Stopped",
+    "pipelines": [
+      {
+        "pipelineReference": {
+          "referenceName": "ingest_openmeteo",
+          "type": "PipelineReference"
+        }
+      }
+    ],
+    "typeProperties": {
+      "recurrence": {
+        "startTime": "2026-01-01T00:00:00",
+        "timeZone": "Morocco Standard Time",
+        "frequency": "Day",
+        "interval": 1,
+        "schedule": {
+          "hours": [
+            3
+          ],
+          "minutes": [
+            0
+          ]
+        }
+      }
+    }
+  }
+}

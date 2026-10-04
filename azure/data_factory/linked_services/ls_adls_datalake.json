@@ -1,0 +1,10 @@
+{
+  "name": "ls_adls_datalake",
+  "properties": {
+    "description": "Data lake ADLS Gen2 (bronze/silver/gold). Auth : identite managee d'ADF.",
+    "type": "AzureBlobFS",
+    "typeProperties": {
+      "url": "https://${STORAGE_ACCOUNT_NAME}.dfs.core.windows.net"
+    }
+  }
+}

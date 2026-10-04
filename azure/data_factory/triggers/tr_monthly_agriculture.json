@@ -1,0 +1,35 @@
+{
+  "name": "tr_monthly_agriculture",
+  "properties": {
+    "description": "Le 1er de chaque mois a 04:00 (Maroc), comme dag_ingest_agriculture.",
+    "type": "ScheduleTrigger",
+    "runtimeState": "Stopped",
+    "pipelines": [
+      {
+        "pipelineReference": {
+          "referenceName": "ingest_agriculture",
+          "type": "PipelineReference"
+        }
+      }
+    ],
+    "typeProperties": {
+      "recurrence": {
+        "startTime": "2026-01-01T00:00:00",
+        "timeZone": "Morocco Standard Time",
+        "frequency": "Month",
+        "interval": 1,
+        "schedule": {
+          "monthDays": [
+            1
+          ],
+          "hours": [
+            4
+          ],
+          "minutes": [
+            0
+          ]
+        }
+      }
+    }
+  }
+}

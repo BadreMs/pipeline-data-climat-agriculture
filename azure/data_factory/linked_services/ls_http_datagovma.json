@@ -1,0 +1,17 @@
+{
+  "name": "ls_http_datagovma",
+  "properties": {
+    "description": "Source HTTP data.gov.ma, URL fournie a l'execution (parametre baseUrl).",
+    "type": "HttpServer",
+    "parameters": {
+      "baseUrl": {
+        "type": "String"
+      }
+    },
+    "typeProperties": {
+      "url": "@{linkedService().baseUrl}",
+      "enableServerCertificateValidation": true,
+      "authenticationType": "Anonymous"
+    }
+  }
+}

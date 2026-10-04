@@ -1,0 +1,30 @@
+{
+  "name": "ds_bronze_openmeteo_json",
+  "properties": {
+    "description": "Bronze Open-Meteo : JSON brut, partitionne par ingest_date et region_code.",
+    "type": "Json",
+    "linkedServiceName": {
+      "referenceName": "ls_adls_datalake",
+      "type": "LinkedServiceReference"
+    },
+    "parameters": {
+      "ingestDate": {
+        "type": "String"
+      },
+      "regionCode": {
+        "type": "String"
+      }
+    },
+    "typeProperties": {
+      "location": {
+        "type": "AzureBlobFSLocation",
+        "fileSystem": "bronze",
+        "folderPath": {
+          "value": "@concat('openmeteo/ingest_date=', dataset().ingestDate, '/region_code=', dataset().regionCode)",
+          "type": "Expression"
+        },
+        "fileName": "data.json"
+      }
+    }
+  }
+}
