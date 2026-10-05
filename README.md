@@ -1,5 +1,7 @@
 # Pipeline Data Climat & Agriculture
 
+> **Recruteur pressé ?** → [Résumé du projet en 2 minutes](docs/recruiter_notes.md)
+
 [![CI](https://github.com/BadreMs/pipeline-data-climat-agriculture/actions/workflows/ci.yml/badge.svg)](https://github.com/BadreMs/pipeline-data-climat-agriculture/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
