@@ -133,6 +133,31 @@ Liste complète : [docs/architecture.md](docs/architecture.md#known-limitations)
 Suite envisagée : test de complétude dbt et récapitulatif des chunks en échec, vraie source
 agricole, venv dbt dédié ou `dbt-databricks`, premier déploiement Azure réel.
 
+
+
+## Aperçu
+
+### Dashboard interactif
+
+![Dashboard Streamlit](docs/images/dashboard.png)
+*Dashboard Streamlit — carte des 12 régions du Maroc, KPIs de sécheresse et de potentiel solaire, export CSV.*
+
+### Orchestration Airflow
+
+![DAGs Airflow](docs/images/airflow_dags_list.png)
+*3 DAGs : ingestion météo Open-Meteo (quotidien), ingestion agriculture (mensuel), transformations dbt (quotidien).*
+
+![DAG transform_dbt](docs/images/airflow_dag_transform_graph.png)
+*Chaîne de transformations dbt : `dbt_deps → dbt_seed → dbt_run → dbt_test`.*
+
+![Run Airflow réussi](docs/images/airflow_dag_run_success.png)
+*Exécution réussie du pipeline complet.*
+
+### Architecture
+
+![Architecture globale](docs/images/architecture.png)
+*Architecture medallion — local (Postgres + dbt + Streamlit) et cible Azure (Data Factory + ADLS Gen2 + Databricks + Azure SQL).*
+
 ## Licence et auteur
 
 [MIT](LICENSE) © 2026 Badre Moussaili.
