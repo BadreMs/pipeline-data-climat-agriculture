@@ -1,0 +1,12 @@
+{
+  "name": "ls_http_openmeteo",
+  "properties": {
+    "description": "API archive Open-Meteo (publique, sans cle) via le connecteur HTTP, qui honore Accept-Encoding (le connecteur REST l ignore).",
+    "type": "HttpServer",
+    "typeProperties": {
+      "url": "https://archive-api.open-meteo.com/v1/",
+      "enableServerCertificateValidation": true,
+      "authenticationType": "Anonymous"
+    }
+  }
+}

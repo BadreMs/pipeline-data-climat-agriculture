@@ -83,17 +83,18 @@
               },
               "typeProperties": {
                 "source": {
-                  "type": "RestSource",
-                  "httpRequestTimeout": "00:01:40",
-                  "requestMethod": "GET"
+                  "type": "BinarySource",
+                  "storeSettings": {
+                    "type": "HttpReadSettings",
+                    "requestMethod": "GET",
+                    "httpRequestTimeout": "00:01:40",
+                    "additionalHeaders": "Accept-Encoding: identity\n"
+                  }
                 },
                 "sink": {
-                  "type": "JsonSink",
+                  "type": "BinarySink",
                   "storeSettings": {
                     "type": "AzureBlobFSWriteSettings"
-                  },
-                  "formatSettings": {
-                    "type": "JsonWriteSettings"
                   }
                 },
                 "enableStaging": false

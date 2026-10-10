@@ -2,7 +2,7 @@
   "name": "ds_bronze_openmeteo_json",
   "properties": {
     "description": "Bronze Open-Meteo : JSON brut, partitionne par ingest_date et region_code.",
-    "type": "Json",
+    "type": "Binary",
     "linkedServiceName": {
       "referenceName": "ls_adls_datalake",
       "type": "LinkedServiceReference"

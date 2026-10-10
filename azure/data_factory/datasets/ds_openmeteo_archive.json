@@ -1,10 +1,10 @@
 {
   "name": "ds_openmeteo_archive",
   "properties": {
-    "description": "Reponse JSON de l'API archive Open-Meteo pour un point et une periode.",
-    "type": "RestResource",
+    "description": "Reponse JSON de l'API archive Open-Meteo pour un point et une periode, copiee telle quelle (binaire).",
+    "type": "Binary",
     "linkedServiceName": {
-      "referenceName": "ls_rest_openmeteo",
+      "referenceName": "ls_http_openmeteo",
       "type": "LinkedServiceReference"
     },
     "parameters": {
@@ -22,7 +22,13 @@
       }
     },
     "typeProperties": {
-      "relativeUrl": "@concat('archive?latitude=', dataset().latitude, '&longitude=', dataset().longitude, '&start_date=', dataset().startDate, '&end_date=', dataset().endDate, '&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,et0_fao_evapotranspiration,shortwave_radiation_sum,relative_humidity_2m_mean,wind_speed_10m_max&timezone=Africa/Casablanca')"
+      "location": {
+        "type": "HttpServerLocation",
+        "relativeUrl": {
+          "value": "@concat('archive?latitude=', dataset().latitude, '&longitude=', dataset().longitude, '&start_date=', dataset().startDate, '&end_date=', dataset().endDate, '&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,et0_fao_evapotranspiration,shortwave_radiation_sum,relative_humidity_2m_mean,wind_speed_10m_max&timezone=Africa/Casablanca')",
+          "type": "Expression"
+        }
+      }
     }
   }
 }
