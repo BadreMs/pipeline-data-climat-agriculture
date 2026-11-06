@@ -20,7 +20,7 @@ de bout en bout (voir [Pipeline Azure](#pipeline-azure)).
 > est dans [docs/azure_actual_deployment.md](docs/azure_actual_deployment.md).
 
 ## Architecture
-![Architecture du pipeline](docs\images\architecturee.png)
+![Architecture du pipeline](docs/images/architecturee.png)
 
 Architecture **medallion** : bronze (`raw`) → silver (`staging`) → gold (`marts`). Détails, règles
 métier et correspondance avec Azure : [docs/architecture.md](docs/architecture.md).
