@@ -12,8 +12,12 @@ Pipeline de données de bout en bout (ingestion, orchestration, transformation d
 croise la météo [Open-Meteo](https://open-meteo.com/) et des données agricoles pour produire, pour
 les 12 régions du Maroc, des indicateurs de **sécheresse** et de **potentiel solaire** de 2015 à
 aujourd'hui. Les données agricoles sont **synthétiques** (voir [Limites connues](#limites-connues)).
-Une extension Azure (Data Factory, ADLS Gen2, Databricks, Azure SQL) est fournie en code et en
-documentation, sans déploiement.
+Une extension Azure (Data Factory, ADLS Gen2, Databricks, Azure SQL) a été déployée et exécutée
+de bout en bout (voir [Pipeline Azure](#pipeline-azure)).
+
+> **Statut : extension Azure terminée et validée end-to-end** (ingestion ADF → notebooks
+> Databricks → Azure SQL, run du 15 octobre 2026). Le journal complet, avec ce qui a échoué,
+> est dans [docs/azure_actual_deployment.md](docs/azure_actual_deployment.md).
 
 ## Architecture
 
@@ -29,7 +33,7 @@ flowchart LR
         INT --> MARTS[(dbt marts<br/>gold)]
         MARTS --> APP[Streamlit]
     end
-    MARTS -.équivalent Azure, non déployé.-> AZ[ADF · ADLS · Databricks<br/>Azure SQL · Power BI]
+    MARTS -.équivalent Azure, validé.-> AZ[ADF · ADLS · Databricks<br/>Azure SQL · Power BI]
 ```
 
 Architecture **medallion** : bronze (`raw`) → silver (`staging`) → gold (`marts`). Détails, règles
@@ -46,7 +50,7 @@ métier et correspondance avec Azure : [docs/architecture.md](docs/architecture.
 | Transformation | dbt-core 1.8 + dbt-postgres 1.8, dbt_utils 1.3 (51 tests) |
 | Restitution | Streamlit, pydeck (carte), plotly (séries), export CSV |
 | Qualité | pytest, ruff, mypy `--strict`, pre-commit, GitHub Actions |
-| Cloud cible *(non déployé)* | Azure Data Factory, ADLS Gen2, Databricks (PySpark), Azure SQL DB, Power BI |
+| Cloud *(déployé et validé)* | Azure Data Factory, ADLS Gen2, Databricks (PySpark), Azure SQL DB, Power BI |
 
 ## Quickstart local
 
@@ -79,7 +83,7 @@ pipeline-data-climat-agriculture/
 ├── scripts/              # export_dim_region.py : seed généré depuis ingestion/regions.py
 ├── dashboard/            # logique testable du dashboard (fonctions pures, requêtes)
 ├── streamlit/            # app.py : interface Streamlit
-├── azure/                # medallion Azure : Data Factory, Databricks, SQL, scripts (non déployé)
+├── azure/                # medallion Azure : Data Factory, Databricks, SQL, scripts
 ├── tests/                # pytest (ingestion, seed, dashboard, artefacts Azure)
 ├── docs/                 # architecture.md, runbook.md
 ├── .github/workflows/    # CI : ruff, mypy strict, pytest
@@ -106,9 +110,33 @@ Le tableau de bord ([`streamlit/app.py`](streamlit/app.py)) expose ces indicateu
 
 Extension *medallion* sur Azure : Data Factory (ingestion), ADLS Gen2 (bronze / silver / gold),
 Databricks PySpark (transformations), Azure SQL DB en étoile (serving Power BI), scripts de
-déploiement en **simulation par défaut**. **Rien n'a été déployé ni exécuté** : le code est
-vérifié statiquement (JSON, références, DDL, seuils comparés au SQL dbt, mypy/ruff) mais pas sur
-Azure. Architecture, coûts estimés (ordre de grandeur) et procédure : [azure/README.md](azure/README.md).
+déploiement en **simulation par défaut**.
+
+**Validé end-to-end sur Azure** : le pipeline ADF `transform_databricks` enchaîne les trois
+notebooks (bronze → silver → gold → Azure SQL) puis une procédure stockée ; run du 15 octobre 2026,
+`Succeeded` en **13 min 16 s**, sur 12 régions × 2023-2024 (ingestion HTTP/Binary en 3 min 58 s).
+La vue de serving `marts.vw_region_year_kpi` renvoie les 24 lignes attendues, avec des
+`precip_et0_ratio` et classes de sécheresse identiques à ceux du pipeline local. Les problèmes
+rencontrés (connecteur REST, AutoPause SQL, Key Vault RBAC, Spark 4 ANSI...) et leur résolution sont
+dans le [journal de déploiement](docs/azure_actual_deployment.md).
+
+![Moniteur ADF : runs de pipeline](docs/images/azure_adf_monitor.png)
+*Azure Data Factory, moniteur : ingestion Open-Meteo (12 régions) et `transform_databricks`, tous `Succeeded`.*
+
+![Activités du pipeline transform_databricks](docs/images/azure_adf_activities.png)
+*`transform_databricks` : 3 notebooks Databricks (`BronzeToSilver`, `SilverToGold`, `GoldToSql`) puis `RefreshServingTables`.*
+
+![Jobs Databricks lancés par ADF](docs/images/azure_databricks_run.png)
+*Databricks, Jobs & Pipelines : jobs `Succeeded` lancés par ADF sur un job cluster single-node.*
+
+![Azure SQL : vue marts.vw_region_year_kpi](docs/images/azure_sql_kpi.png)
+*Azure SQL, vue de serving : 12 régions × 2 ans, classe de sécheresse, ratio P/ET0 et score solaire.*
+
+**Coût** : 0,96 $ affichés par Cost Management pour le groupe de ressources `rg-climatagri-dev`
+(8 oct. → 6 nov. 2026, abonnement d'essai), dont 0,77 $ Databricks et 0,18 $ Data Factory. Ce
+chiffre n'inclut probablement pas les VM du cluster, facturées dans le groupe géré Databricks
+(à vérifier : voir le journal). Architecture, coûts estimés (ordre de grandeur) et procédure :
+[azure/README.md](azure/README.md).
 
 ## Limites connues
 
@@ -118,7 +146,9 @@ Azure. Architecture, coûts estimés (ordre de grandeur) et procédure : [azure/
   (constaté et réparé) ; pas encore de test de complétude dbt.
 - **dbt 1.8** (lignée dépréciée), imposé par les contraintes d'Airflow 2.9.3.
 - **Indicateurs simplifiés** : SPI = z-score (pas de loi gamma), un point de mesure par région.
-- **Azure non testé**, et logique métier dupliquée en PySpark par choix de démonstration.
+- **Azure : périmètre validé limité** : 12 régions × 2023-2024 seulement (pas le backfill 2015 →
+  aujourd'hui), sans Power BI ni déclencheurs quotidiens ; la logique métier est dupliquée en
+  PySpark par choix de démonstration. Détail : [journal de déploiement](docs/azure_actual_deployment.md).
 
 Liste complète : [docs/architecture.md](docs/architecture.md#known-limitations).
 
@@ -129,11 +159,12 @@ Liste complète : [docs/architecture.md](docs/architecture.md#known-limitations)
 - [x] Phase 2 — Orchestration Airflow
 - [x] Phase 3 — Transformations dbt (staging, intermediate, marts, 51 tests)
 - [x] Phase 4 — Restitution Streamlit
-- [x] Phase 5 — Extension Azure (code + docs, non déployée)
+- [x] Phase 5 — Extension Azure : terminée et validée end-to-end (ADF + Databricks + Azure SQL)
 - [x] Phase 6 — Documentation et CI
 
 Suite envisagée : test de complétude dbt et récapitulatif des chunks en échec, vraie source
-agricole, venv dbt dédié ou `dbt-databricks`, premier déploiement Azure réel.
+agricole, venv dbt dédié ou `dbt-databricks`, partitions bronze incluant la plage de dates,
+Power BI sur Azure SQL.
 
 
 

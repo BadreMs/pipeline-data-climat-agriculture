@@ -1,19 +1,21 @@
 {
   "name": "ls_databricks",
   "properties": {
-    "description": "Databricks : job cluster single-node cree a la volee. Auth : MSI.",
+    "description": "Databricks : job cluster single-node cree a la volee (config alignee sur gate-single-node, validee). Auth : MSI.",
     "type": "AzureDatabricks",
     "typeProperties": {
       "domain": "https://${DATABRICKS_WORKSPACE_URL}",
       "authentication": "MSI",
       "workspaceResourceId": "${DATABRICKS_WORKSPACE_RESOURCE_ID}",
-      "newClusterNodeType": "Standard_DS3_v2",
-      "newClusterDriverNodeType": "Standard_DS3_v2",
+      "newClusterNodeType": "Standard_E4ads_v7",
+      "newClusterDriverNodeType": "Standard_E4ads_v7",
       "newClusterNumOfWorker": "0",
-      "newClusterVersion": "15.4.x-scala2.12",
+      "newClusterVersion": "17.3.x-scala2.13",
       "newClusterSparkConf": {
         "spark.databricks.cluster.profile": "singleNode",
-        "spark.master": "local[*, 4]"
+        "spark.master": "local[*, 4]",
+        "spark.sql.ansi.enabled": "false",
+        "spark.hadoop.fs.azure.account.key.${STORAGE_ACCOUNT_NAME}.dfs.core.windows.net": "{{secrets/kv-climat-agriculture/storage-account-key}}"
       },
       "newClusterCustomTags": {
         "ResourceClass": "SingleNode"
