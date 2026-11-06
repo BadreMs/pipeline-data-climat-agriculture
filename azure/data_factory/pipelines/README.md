@@ -1,7 +1,10 @@
 # Pipelines Data Factory
 
-> Non importés dans une vraie Data Factory à ce jour : validés uniquement comme JSON et pour la
-> cohérence de leurs références (`tests/test_azure_artifacts.py`).
+> `ingest_openmeteo` et `ingest_agriculture` ont été importés dans une vraie Data Factory le
+> 2026-10-09 (`scripts/deploy_adf_ingest.sh`) ; `transform_databricks` n'a jamais été importé ni
+> exécuté. Le détail du déploiement réel est dans
+> [docs/azure_actual_deployment.md](../../../docs/azure_actual_deployment.md). Les JSON sont aussi
+> validés pour la cohérence de leurs références (`tests/test_azure_artifacts.py`).
 
 Les fichiers sont au **format Git d'ADF** (`{ "name": ..., "properties": ... }`), regroupés par
 type : `linked_services/`, `datasets/`, `pipelines/`, `triggers/` (dossier parent). Ils
@@ -33,9 +36,27 @@ Les horaires reproduisent ceux d'Airflow (`dag_ingest_openmeteo`, `dag_ingest_ag
 - Les variables demandées (8 variables journalières) et le fuseau `Africa/Casablanca` sont ceux
   du client local.
 
-> **À valider au premier run** : le `Copy` REST → JSON doit conserver la structure
-> hiérarchique de la réponse (`daily.time[]`, `daily.<variable>[]`) telle que lue par
-> `01_bronze_to_silver.py`. Si ADF aplatissait la réponse, ajuster le mapping du `Copy`.
+> **Connecteur HTTP en mode binaire, et non REST (constats du premier déploiement réel,
+> 2026-10-09).** Avec `RestSource`, le `Copy` échouait côté source avec
+> `InvalidDataException: Found invalid data while decoding`. Constats vérifiés :
+> - Open-Meteo répond en `deflate` (zlib) quand le client annonce `gzip, deflate`, en `gzip` si
+>   `deflate` est refusé (`;q=0`) et en JSON clair avec `Accept-Encoding: identity` (`curl`).
+> - Le connecteur REST envoie `Accept-Encoding: gzip, deflate` et **ignore** `additionalHeaders`
+>   (écho des en-têtes reçus par un service tiers).
+> - Le connecteur HTTP **honore** `additionalHeaders` et, en format `Binary`, écrit les octets du
+>   serveur sans les modifier (réponse `gzip` brute observée).
+>
+> Le pipeline utilise donc `BinarySource` + `HttpReadSettings` avec `Accept-Encoding: identity`,
+> et `BinarySink` : le JSON est écrit tel que renvoyé, et lu par `01_bronze_to_silver.py`
+> (`multiLine`). Spark ne décompresse pas un `data.json` qui contiendrait du gzip brut : ne pas
+> retirer l'en-tête sans adapter le notebook.
+>
+> **Non démontré** : que le décodeur `deflate` du connecteur REST soit bien la cause de l'erreur.
+> C'est cohérent avec les observations, mais l'erreur n'a pas été analysée plus avant : elle est
+> contournée, pas expliquée.
+>
+> **À valider** : le fichier produit doit avoir la structure hiérarchique de la réponse
+> (`daily.time[]`, `daily.<variable>[]`) telle que lue par `01_bronze_to_silver.py`.
 >
 > Le client local découpe les longues périodes en chunks de 2 ans ; ici une seule requête
 > couvre toute la plage `startDate`–`endDate`. Les limites de l'API sur une plage aussi longue
@@ -69,7 +90,7 @@ garde les données du run précédent.
 | Linked service | Type | Authentification |
 |---|---|---|
 | `ls_adls_datalake` | ADLS Gen2 | identité managée d'ADF |
-| `ls_rest_openmeteo` | REST | anonyme (API publique) |
+| `ls_http_openmeteo` | HTTP (le connecteur REST ignore `Accept-Encoding`, voir plus haut) | anonyme (API publique) |
 | `ls_http_datagovma` | HTTP, URL paramétrée | anonyme |
 | `ls_databricks` | Databricks, job cluster single-node créé à la volée | identité managée d'ADF (rôle Contributor sur le workspace) |
 | `ls_azuresql` | Azure SQL DB | identité managée d'ADF (utilisateur contenu dans la base) |

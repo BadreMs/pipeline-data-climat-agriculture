@@ -122,7 +122,7 @@ def test_adf_openmeteo_requests_same_variables_as_local_client() -> None:
     from ingestion.openmeteo_client import DAILY_VARIABLES, TIMEZONE
 
     dataset = _load(ADF / "datasets" / "ds_openmeteo_archive.json")["properties"]
-    url = dataset["typeProperties"]["relativeUrl"]
+    url = dataset["typeProperties"]["location"]["relativeUrl"]["value"]
     for variable in DAILY_VARIABLES:
         assert variable in url
     assert f"timezone={TIMEZONE}" in url
@@ -317,7 +317,7 @@ pytestmark_bash = pytest.mark.skipif(BASH_EXE is None, reason="bash introuvable 
 
 
 @pytestmark_bash
-@pytest.mark.parametrize("script", ["deploy.sh", "teardown.sh"])
+@pytest.mark.parametrize("script", ["deploy.sh", "deploy_adf_ingest.sh", "teardown.sh"])
 def test_shell_scripts_have_valid_syntax(script: str) -> None:
     assert BASH_EXE is not None
     result = subprocess.run(
@@ -327,7 +327,7 @@ def test_shell_scripts_have_valid_syntax(script: str) -> None:
 
 
 @pytestmark_bash
-@pytest.mark.parametrize("script", ["deploy.sh", "teardown.sh"])
+@pytest.mark.parametrize("script", ["deploy.sh", "deploy_adf_ingest.sh", "teardown.sh"])
 def test_shell_scripts_never_call_az_without_apply(script: str, tmp_path: Path) -> None:
     """Mode simulation par defaut : un faux `az` laisserait une trace s'il etait appele."""
     assert BASH_EXE is not None

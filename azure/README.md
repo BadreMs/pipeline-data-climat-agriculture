@@ -1,14 +1,14 @@
 # Pipeline Azure — architecture medallion
 
-> **Statut : code et documentation uniquement.** Rien n'a été déployé sur Azure, aucun
-> abonnement n'a été utilisé, et **aucun de ces artefacts n'a été exécuté** : les notebooks
-> PySpark n'ont jamais tourné sur un cluster (pyspark n'est même pas installé dans le projet),
-> les pipelines ADF n'ont jamais été importés dans une Data Factory, le DDL T-SQL n'a jamais
-> été joué sur Azure SQL. Seuls sont vérifiés automatiquement : la validité des JSON, la
-> cohérence des références entre ressources ADF, la correspondance des régions avec
-> `ingestion/regions.py`, l'identité des seuils métier avec le SQL dbt, la syntaxe des scripts
-> shell et la conformité mypy/ruff des notebooks (`tests/test_azure_artifacts.py`).
-> Le premier déploiement réel demandera du débogage.
+> **Statut : déployé et validé end-to-end** (run ADF `transform_databricks` du 2026-10-15,
+> `Succeeded`, ingestion → notebooks Databricks → Azure SQL, 12 régions × 2023-2024). Ce que le
+> déploiement réel a révélé (connecteur REST, Key Vault RBAC, Spark 4 ANSI, AutoPause SQL...), les
+> coûts observés et les écarts de `scripts/deploy.sh` sont dans
+> [docs/azure_actual_deployment.md](../docs/azure_actual_deployment.md). **`deploy.sh` n'a pas été
+> utilisé tel quel** : le déploiement a été fait à la main, ressource par ressource, et la partie
+> ingestion via `scripts/deploy_adf_ingest.sh`. Les coûts chiffrés plus bas sont des estimations
+> d'avant déploiement. Vérifiés automatiquement en plus : JSON, références ADF, régions, seuils
+> métier identiques au SQL dbt, syntaxe shell, mypy/ruff (`tests/test_azure_artifacts.py`).
 
 Cette extension reproduit sur Azure le pipeline local (Airflow + Postgres + dbt) avec les
 services managés équivalents. Le pipeline local reste la référence fonctionnelle.

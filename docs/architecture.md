@@ -24,7 +24,7 @@ flowchart TB
         MARTS --> APP[Streamlit<br/>dashboard]
     end
 
-    subgraph AZ [Cible Azure - code uniquement - non déployé]
+    subgraph AZ [Cible Azure - déployé et validé end-to-end]
         direction LR
         ADF[Data Factory] --> BRZ[(ADLS bronze)]
         BRZ --> DBX[Databricks<br/>PySpark]
@@ -174,9 +174,11 @@ ne compare pas les **résultats** des deux implémentations. Détails :
 
 ### Azure
 
-- **Rien n'a été déployé ni exécuté** : notebooks, pipelines ADF, DDL T-SQL et scripts n'ont
-  jamais tourné. Le premier déploiement demandera du débogage. Voir
-  [azure/README.md](../azure/README.md) pour les hypothèses, notamment sur les coûts (ordre de
-  grandeur non vérifié).
+- **Périmètre validé limité** : déploiement réel et run de bout en bout sur 12 régions ×
+  2023-2024 seulement (pas de backfill 2015 → aujourd'hui, pas de Power BI, pas de déclencheurs
+  quotidiens). Le déploiement a nécessité des corrections (connecteur REST, Key Vault, Spark 4) et
+  `deploy.sh` n'a pas été utilisé tel quel : voir
+  [azure_actual_deployment.md](azure_actual_deployment.md). Les coûts estimés d'
+  [azure/README.md](../azure/README.md) sont des ordres de grandeur d'avant déploiement.
 - Duplication de la logique métier en PySpark (voir ci-dessus), Parquet au lieu de Delta Lake,
   silver en recalcul complet.
