@@ -20,21 +20,7 @@ de bout en bout (voir [Pipeline Azure](#pipeline-azure)).
 > est dans [docs/azure_actual_deployment.md](docs/azure_actual_deployment.md).
 
 ## Architecture
-
-```mermaid
-flowchart LR
-    OM[Open-Meteo<br/>API archive] --> ING
-    DG[data.gov.ma<br/>ou fixture mock] --> ING
-    subgraph LOCAL [Local - Docker Compose]
-        AF[Airflow<br/>3 DAGs] -.orchestre.-> ING[ingestion/<br/>Python]
-        ING --> RAW[(Postgres raw<br/>bronze)]
-        RAW --> STG[dbt staging<br/>silver]
-        STG --> INT[dbt intermediate]
-        INT --> MARTS[(dbt marts<br/>gold)]
-        MARTS --> APP[Streamlit]
-    end
-    MARTS -.équivalent Azure, validé.-> AZ[ADF · ADLS · Databricks<br/>Azure SQL · Power BI]
-```
+![Architecture du pipeline](docs\images\architectureee.png)
 
 Architecture **medallion** : bronze (`raw`) → silver (`staging`) → gold (`marts`). Détails, règles
 métier et correspondance avec Azure : [docs/architecture.md](docs/architecture.md).
