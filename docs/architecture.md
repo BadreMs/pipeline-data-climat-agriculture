@@ -11,27 +11,50 @@ Pour l'exploitation au quotidien (démarrage, commandes, dépannage) : [runbook.
 
 ```mermaid
 flowchart TB
+    %% Nœuds sources (sans logo officiel, on garde le texte)
     OM[Open-Meteo<br/>API archive]
     DG[data.gov.ma<br/>ou fixture mock]
 
     subgraph LOCAL [Pipeline local - Docker Compose - exécuté et testé]
         direction LR
-        AF[Airflow<br/>3 DAGs] -->|BashOperator| ING[ingestion/<br/>Python, upsert idempotent]
-        ING --> RAW[(Postgres<br/>raw)]
-        RAW --> STG[dbt staging<br/>views]
-        STG --> INT[dbt intermediate<br/>view]
-        INT --> MARTS[(dbt marts<br/>tables + seed dim_region)]
-        MARTS --> APP[Streamlit<br/>dashboard]
+        AF[<img src='https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/apache-airflow/default.svg' width='40' /><br/>Airflow<br/>3 DAGs]
+        ING[<img src='https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg' width='40' /><br/>ingestion/<br/>Python, upsert idempotent]
+        RAW[(<img src='https://raw.githubusercontent.com/devicons/devicon/master/icons/postgresql/postgresql-original.svg' width='40' /><br/>Postgres<br/>raw)]
+        STG[<img src='https://raw.githubusercontent.com/dbt-labs/dbt-core/fa1ea14ddfb1d5ae319d5141844910dd53ab2834/etc/dbt-core.svg' width='40' /><br/>dbt staging<br/>views]
+        INT[<img src='https://raw.githubusercontent.com/dbt-labs/dbt-core/fa1ea14ddfb1d5ae319d5141844910dd53ab2834/etc/dbt-core.svg' width='40' /><br/>dbt intermediate<br/>view]
+        MARTS[(<img src='https://raw.githubusercontent.com/dbt-labs/dbt-core/fa1ea14ddfb1d5ae319d5141844910dd53ab2834/etc/dbt-core.svg' width='40' /><br/>dbt marts<br/>tables + seed dim_region)]
+        APP[<img src='https://svgicons.com/img/190135/streamlit.svg' width='40' /><br/>Streamlit<br/>dashboard]
+
+        AF -->|BashOperator| ING
+        ING --> RAW
+        RAW --> STG
+        STG --> INT
+        INT --> MARTS
+        MARTS --> APP
     end
 
-    subgraph AZ [Cible Azure - déployé et validé end-to-end]
+        subgraph AZ [Cible Azure - déployé et validé end-to-end]
         direction LR
-        ADF[Data Factory] --> BRZ[(ADLS bronze)]
-        BRZ --> DBX[Databricks<br/>PySpark]
-        DBX --> SLV[(silver)]
-        SLV --> GLD[(gold)]
-        GLD --> SQL[(Azure SQL<br/>marts, étoile)]
-        SQL --> PBI[Power BI]
+        ADF[<img src='https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/azure-data-factories/default.svg' width='40' /><br/>Data Factory]
+        
+        BRZ[(<img src='https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/azure-storage-accounts/default.svg' width='40' /><br/>🟤 ADLS bronze)]
+        
+        DBX[<img src='https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apachespark/apachespark-original.svg' width='40' /><br/>Databricks<br/>PySpark]
+        
+        SLV[(<img src='https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/azure-storage-accounts/default.svg' width='40' /><br/>⚪ silver)]
+        
+        GLD[(<img src='https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/azure-storage-accounts/default.svg' width='40' /><br/>🟡 gold)]
+        
+        SQL[(<img src='https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/azure-azure-sql/default.svg' width='40' /><br/>Azure SQL<br/>marts, étoile)]
+        
+        PBI[<img src='https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/microsoft-power-bi/default.svg' width='40' /><br/>Power BI]
+
+        ADF --> BRZ
+        BRZ --> DBX
+        SLV --> GLD
+        DBX --> SLV
+        GLD --> SQL
+        SQL --> PBI
     end
 
     OM --> ING
